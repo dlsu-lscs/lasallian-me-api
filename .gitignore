@@ -1,0 +1,41 @@
+# Node dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE/editor files
+.vscode/
+.idea/
+.DS_Store
+
+# OS/system files
+Thumbs.db
+
+# Coverage & test reports
+coverage/
+*.lcov
+
+# Temporary files
+.tmp/
+temp/
+
+# Optional: If using eslint or prettier caches
+.eslintcache
+.prettiercache
