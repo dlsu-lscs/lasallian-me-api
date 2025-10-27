@@ -15,9 +15,15 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "lint": "eslint",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node .",
+    "prestart": "npm run build",
+    "dev": "tsx watch server.ts",
+    "build": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
+},
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
