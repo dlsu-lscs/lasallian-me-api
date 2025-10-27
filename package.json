@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "This project was generated using the `create-lscs-api` scaffolder, based on the official La Salle Computer Society (LSCS) Backend Standards.",
   "main": "dist/server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node .",
@@ -13,10 +17,6 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
     "express": "^5.1.0",
     "winston": "^3.18.3"
