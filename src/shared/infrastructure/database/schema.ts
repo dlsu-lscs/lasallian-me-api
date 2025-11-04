@@ -35,7 +35,7 @@ export const applications = pgTable("applications", {
 
 export const ratings = pgTable("ratings", {
 	id: serial().primaryKey().notNull(),
-	userId: integer("user_id"),
+	userId: text("user_id"),
 	applicationId: integer("application_id"),
 	comment: varchar({ length: 255 }),
 	isAnonymous: boolean("is_anonymous").default(false),
@@ -55,7 +55,7 @@ export const ratings = pgTable("ratings", {
 ]);
 
 export const userFavorites = pgTable("user_favorites", {
-	userId: integer("user_id").notNull(),
+	userId: text("user_id").notNull(),
 	applicationId: integer("application_id").notNull(),
 }, (table) => [
 	foreignKey({
