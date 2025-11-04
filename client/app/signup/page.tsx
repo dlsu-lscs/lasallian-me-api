@@ -15,9 +15,9 @@ export default function SignUp() {
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
       });
-    } catch (err) {
+    } catch {
       setError("An error occurred during sign up");
       setLoading(false);
     }
