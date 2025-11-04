@@ -1,16 +1,9 @@
-import express from "express";
 import cors from "cors";
 
-const app = express();
-
-// Middleware
-app.use(express.json());
-
-// Configure CORS middleware
-app.use(
-  cors({
-    origin: "http://localhost:3001", // Next.js client origin
-    methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
-    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-  })
-);
+// Export CORS middleware configuration
+export const corsMiddleware = cors({
+  origin: "http://localhost:3000", // Next.js client origin
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Specify allowed HTTP methods
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  allowedHeaders: ["Content-Type", "Authorization"], // Allow these headers
+});
