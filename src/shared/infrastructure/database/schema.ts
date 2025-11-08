@@ -120,19 +120,19 @@ export const verification = pgTable("verification", {
 // 	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
 // ]);
 
-export const userFavorites = pgTable("user_favorites", {
-	userId: integer("user_id").notNull(),
-	applicationId: integer("application_id").notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "user_favorites_user_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.applicationId],
-			foreignColumns: [applications.id],
-			name: "user_favorites_application_id_fkey"
-		}),
-	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorites_pkey"}),
-]);
+// export const userFavorites = pgTable("user_favorites", {
+// 	userId: integer("user_id").notNull(),
+// 	applicationId: integer("application_id").notNull(),
+// }, (table) => [
+// 	foreignKey({
+// 			columns: [table.userId],
+// 			foreignColumns: [user.id],
+// 			name: "user_favorites_user_id_fkey"
+// 		}),
+// 	foreignKey({
+// 			columns: [table.applicationId],
+// 			foreignColumns: [applications.id],
+// 			name: "user_favorites_application_id_fkey"
+// 		}),
+// 	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorites_pkey"}),
+// ]);
