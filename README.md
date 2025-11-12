@@ -70,7 +70,11 @@ TRUSTED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 **Sign In with Google**
 ```http
-GET /api/auth/sign-in/google
+POST /api/auth/sign-in/social
+{
+  "provider": "google",
+  "redirect_uri": "http://localhost:3000/dashboard"
+}
 ```
 Redirects to Google OAuth consent screen. After successful authentication, redirects back to your application with session cookies.
 
