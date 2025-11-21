@@ -1,6 +1,6 @@
 // User request handlers
 import { Request, Response } from 'express';
-import { UserService } from './user.service.js';
+import  UserService from './user.service.js';
 import { logger } from '@/shared/utils/logger.js';
 
 const userService = new UserService();
