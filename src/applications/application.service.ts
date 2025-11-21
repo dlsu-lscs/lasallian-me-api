@@ -1,6 +1,5 @@
-import { Application } from './application.model.js';
 import { ApplicationFilters } from './dto/index.js';
-import { applications } from "@/shared/infrastructure/database/schema.js"
+import { application } from "@/shared/infrastructure/database/schema.js"
 import {db} from "@/shared/config/database.js"
 import { eq, SQL, gte, lte, between, and, or, like, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
@@ -12,6 +11,9 @@ export type ApplicationsServiceResult = {
     data: Application[];
     total: number;
 };
+
+export type Application = typeof application.$inferSelect;
+export type NewApplication = typeof application.$inferInsert;
 
 /**
  * Service layer for application-related business logic
@@ -52,27 +54,27 @@ export class ApplicationService {
         const conditions: SQL[] = []
 
         if(createdAfter !== undefined && createdBefore !== undefined){
-            conditions.push(between(applications.createdAt, createdAfter, createdBefore))
+            conditions.push(between(application.createdAt, createdAfter, createdBefore))
         } else if (createdAfter !== undefined) {
-            conditions.push(gte(applications.createdAt, createdAfter))
+            conditions.push(gte(application.createdAt, createdAfter))
         } else if (createdBefore !== undefined) {
-            conditions.push(lte(applications.createdAt, createdBefore))
+            conditions.push(lte(application.createdAt, createdBefore))
         }
 
         if(authorId !== undefined){
-            conditions.push(eq(applications.authorId, authorId))
+            conditions.push(eq(application.authorId, authorId))
         }
 
         if(tags !== undefined && tags.length > 0){
-            conditions.push(arrayOverlaps(applications.tags, tags))
+            conditions.push(arrayOverlaps(application.tags, tags))
         }
 
         if(search !== undefined && search.trim() !== ''){
             const searchPattern = `%${search}%`;
             conditions.push(
                 or(
-                    like(applications.title, searchPattern),
-                    like(applications.description, searchPattern)
+                    like(application.title, searchPattern),
+                    like(application.description, searchPattern)
                 )!
             )
         }
@@ -80,14 +82,14 @@ export class ApplicationService {
         let orderByColumn;
         switch(sortBy) {
             case 'title':
-                orderByColumn = applications.title;
+                orderByColumn = application.title;
                 break;
             case 'updatedAt':
-                orderByColumn = applications.updatedAt;
+                orderByColumn = application.updatedAt;
                 break;
             case 'createdAt':
             default:
-                orderByColumn = applications.createdAt;
+                orderByColumn = application.createdAt;
                 break;
         }
 
@@ -100,13 +102,13 @@ export class ApplicationService {
         // Get total count
         const [{ value: total }] = await db
             .select({ value: count() })
-            .from(applications)
+            .from(application)
             .where(whereClause);
 
         // Get paginated data
         const data = await db
             .select()
-            .from(applications)
+            .from(application)
             .where(whereClause)
             .orderBy(orderByClause)
             .limit(safeLimit)

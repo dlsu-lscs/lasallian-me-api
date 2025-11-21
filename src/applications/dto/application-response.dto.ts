@@ -10,6 +10,7 @@ extendZodWithOpenApi(z);
 export const ApplicationResponseSchema = z.object({
   id: z.number().openapi({ example: 1 }),
   title: z.string().openapi({ example: 'My Awesome App' }),
+  slug: z.string().openapi({ example: 'my-awesome-app' }),
   authorId: z.number().openapi({ example: 123 }),
   description: z.string().nullable().openapi({ example: 'A description of the application' }),
   url: z.string().nullable().openapi({ example: 'https://example.com' }),

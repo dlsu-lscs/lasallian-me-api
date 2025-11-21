@@ -1,13 +1,14 @@
 import { Router } from 'express';
-import { getApplications } from './application.controller.js';
+import { ApplicationController } from './application.controller.js';
 
 const router = Router();
+const applicationController = new ApplicationController();
 
 /**
  * @route GET /api/applications
  * @description List applications with optional filters, pagination, and sorting
  * @access Public
  */
-router.get('/', getApplications);
+router.get('/', applicationController.getApplications);
 
 export default router;

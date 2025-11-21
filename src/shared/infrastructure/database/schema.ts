@@ -1,10 +1,11 @@
 import { pgTable, foreignKey, serial, varchar, integer, text, timestamp, unique, boolean } from "drizzle-orm/pg-core"
 
-export const applications = pgTable("applications", {
+export const application = pgTable("application", {
 	id: serial().primaryKey().notNull(),
 	title: varchar({ length: 255 }).notNull(),
+	slug: varchar({ length: 255 }).notNull().unique(),
 	authorId: integer("author_id").notNull(),
-	description: varchar({ length: 255 }),
+	description: text(),
 	url: text(),
 	previewImages: text("preview_images").array(),
 	tags: varchar({ length: 50 }).array(),
@@ -13,16 +14,16 @@ export const applications = pgTable("applications", {
 }, (table) => [
 	foreignKey({
 			columns: [table.authorId],
-			foreignColumns: [authors.id],
+			foreignColumns: [author.id],
 			name: "applications_author_id_authors_id_fk"
 		}).onDelete("cascade"),
 ]);
 
-export const authors = pgTable("authors", {
+export const author = pgTable("author", {
 	id: serial().primaryKey().notNull(),
 	name: varchar({ length: 150 }).notNull(),
 	email: varchar({ length: 150 }).notNull(),
-	description: varchar({ length: 255 }),
+	description: text(),
 	website: text(),
 	logo: text(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

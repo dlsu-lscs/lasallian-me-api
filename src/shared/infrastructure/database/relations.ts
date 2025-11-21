@@ -1,17 +1,17 @@
 import { relations } from "drizzle-orm/relations";
-import { authors, applications, user, ratings, userFavorites } from "./schema.js";
+import { author, application, user, ratings, userFavorites } from "./schema.js";
 
-export const applicationsRelations = relations(applications, ({one, many}) => ({
-	author: one(authors, {
-		fields: [applications.authorId],
-		references: [authors.id]
+export const applicationsRelations = relations(application, ({one, many}) => ({
+	author: one(author, {
+		fields: [application.authorId],
+		references: [author.id]
 	}),
 	ratings: many(ratings),
 	userFavorites: many(userFavorites),
 }));
 
-export const authorsRelations = relations(authors, ({many}) => ({
-	applications: many(applications),
+export const authorsRelations = relations(author, ({many}) => ({
+	applications: many(application),
 }));
 
 export const ratingsRelations = relations(ratings, ({one}) => ({
@@ -19,9 +19,9 @@ export const ratingsRelations = relations(ratings, ({one}) => ({
 		fields: [ratings.userId],
 		references: [user.id]
 	}),
-	application: one(applications, {
+	application: one(application, {
 		fields: [ratings.applicationId],
-		references: [applications.id]
+		references: [application.id]
 	}),
 }));
 
@@ -35,8 +35,8 @@ export const userFavoritesRelations = relations(userFavorites, ({one}) => ({
 		fields: [userFavorites.userId],
 		references: [user.id]
 	}),
-	application: one(applications, {
+	application: one(application, {
 		fields: [userFavorites.applicationId],
-		references: [applications.id]
+		references: [application.id]
 	}),
 }));

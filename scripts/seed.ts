@@ -1,5 +1,5 @@
 import { db } from '../src/shared/config/database.js';
-import { applications, authors } from '../src/shared/infrastructure/database/schema.js';
+import { application as applications, author as authors } from '../src/shared/infrastructure/database/schema.js';
 import { logger } from '../src/shared/utils/logger.js';
 
 async function seed() {
@@ -49,6 +49,7 @@ async function seed() {
       .values([
         {
           title: 'Task Manager Pro',
+          slug: 'task-manager-pro',
           authorId: author1.id,
           description: 'A powerful task management application with real-time collaboration',
           url: 'https://taskmanager.example.com',
@@ -60,6 +61,7 @@ async function seed() {
         },
         {
           title: 'Weather Dashboard',
+          slug: 'weather-dashboard',
           authorId: author2.id,
           description: 'Beautiful weather forecasting app with interactive maps',
           url: 'https://weather.example.com',
@@ -68,6 +70,7 @@ async function seed() {
         },
         {
           title: 'E-commerce Platform',
+          slug: 'e-commerce-platform',
           authorId: author1.id,
           description: 'Full-featured online shopping platform with payment integration',
           url: 'https://shop.example.com',
@@ -80,6 +83,7 @@ async function seed() {
         },
         {
           title: 'Blog CMS',
+          slug: 'blog-cms',
           authorId: author3.id,
           description: 'Content management system for bloggers and content creators',
           url: 'https://blogcms.example.com',
@@ -88,6 +92,7 @@ async function seed() {
         },
         {
           title: 'Chat Application',
+          slug: 'chat-application',
           authorId: author2.id,
           description: 'Real-time messaging app with video call support',
           url: 'https://chat.example.com',
@@ -99,6 +104,7 @@ async function seed() {
         },
         {
           title: 'Fitness Tracker',
+          slug: 'fitness-tracker',
           authorId: author3.id,
           description: 'Track your workouts, nutrition, and health goals',
           url: 'https://fitness.example.com',
@@ -107,6 +113,7 @@ async function seed() {
         },
         {
           title: 'Recipe Finder',
+          slug: 'recipe-finder',
           authorId: author1.id,
           description: 'Discover and save your favorite recipes from around the world',
           url: 'https://recipes.example.com',
@@ -118,6 +125,7 @@ async function seed() {
         },
         {
           title: 'Portfolio Generator',
+          slug: 'portfolio-generator',
           authorId: author2.id,
           description: 'Create stunning developer portfolios in minutes',
           url: 'https://portfolio.example.com',
@@ -126,6 +134,7 @@ async function seed() {
         },
         {
           title: 'Analytics Dashboard',
+          slug: 'analytics-dashboard',
           authorId: author3.id,
           description: 'Business intelligence and data visualization platform',
           url: 'https://analytics.example.com',
@@ -137,6 +146,7 @@ async function seed() {
         },
         {
           title: 'Music Player',
+          slug: 'music-player',
           authorId: author1.id,
           description: 'Beautiful music streaming application with playlist support',
           url: 'https://music.example.com',
