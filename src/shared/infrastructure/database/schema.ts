@@ -10,7 +10,10 @@ export const application = pgTable("application", {
 	previewImages: text("preview_images").array(),
 	tags: varchar({ length: 50 }).array(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.authorId],
@@ -27,7 +30,11 @@ export const author = pgTable("author", {
 	website: text(),
 	logo: text(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
+
 }, (table) => [
 	unique("authors_email_key").on(table.email),
 ]);
@@ -50,6 +57,7 @@ export const user = pgTable("user", {
 	token: text("token").notNull().unique(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
+	  .defaultNow()
 	  .$onUpdate(() => /* @__PURE__ */ new Date())
 	  .notNull(),
 	ipAddress: text("ip_address"),
@@ -75,6 +83,7 @@ export const user = pgTable("user", {
 	password: text("password"),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
+	  .defaultNow()
 	  .$onUpdate(() => /* @__PURE__ */ new Date())
 	  .notNull(),
   });
