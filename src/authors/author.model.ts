@@ -1,5 +1,4 @@
 export { author } from "@/shared/infrastructure/database/schema.js";
-export {z} from "zod"
 
 import { author } from "@/shared/infrastructure/database/schema.js"
 
