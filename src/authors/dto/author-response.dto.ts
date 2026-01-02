@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/shared/config/openapi.js";
 
 export const AuthorResponseSchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
