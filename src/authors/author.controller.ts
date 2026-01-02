@@ -1,13 +1,13 @@
-import { AuthorRequestSchema, CreateAuthorRequestSchema, AuthorResponseSchema, DeleteAuthorRequestSchema } from "./dto/index.js";
+import { AuthorRequestSchema, CreateAuthorRequestSchema, AuthorResponseSchema, DeleteAuthorRequestSchema, AuthorRequest, DeleteAuthorRequest } from "./dto/index.js";
 import { logger } from "@/shared/utils/logger.js";
 import { Response, Request } from "express";
 import type { InsertAuthor, SelectAuthor } from "./author.model.js";
 import { HttpError } from "@/shared/middleware/error.middleware.js";
 
 export interface IAuthorService {
-  getAuthor(email: string): Promise<SelectAuthor | undefined>;
-  createAuthor(newAuthor: InsertAuthor): Promise<SelectAuthor>;
-  deleteAuthor(authorId: number): Promise<SelectAuthor>;
+    getAuthor(authorRequest: AuthorRequest): Promise<SelectAuthor | undefined>;
+    createAuthor(newAuthor: InsertAuthor): Promise<SelectAuthor>;
+    deleteAuthor(deleteAuthorRequest: DeleteAuthorRequest): Promise<SelectAuthor | undefined>;
 }
 
 
@@ -17,15 +17,15 @@ export default class AuthorController{
     /**
      * Handles GET requests for author by email
      * @route GET /api/authors/:email
-     * @param req - Express request object with query parameters
+    * @param req - Express request object with path parameters
      * @param res - Express response object
      */
     getAuthor = async(req: Request, res: Response): Promise<void> => {
         const parsed = AuthorRequestSchema.safeParse(req.params)
 
         if (!parsed.success) {
-            logger.warn("Invalid query parameters", { errors: parsed.error.issues })
-            throw new HttpError(400, "Invalid query parameters", "VALIDATION_ERROR",
+            logger.warn("Invalid path parameters", { errors: parsed.error.issues })
+            throw new HttpError(400, "Invalid path parameters", "VALIDATION_ERROR",
                 parsed.error.issues.map(err => ({
                     field: err.path.join("."),
                     message: err.message
@@ -35,8 +35,9 @@ export default class AuthorController{
 
         logger.debug("Fetching author", { email: parsed.data.email })
 
+        const authorRequest: AuthorRequest = parsed.data
 
-        const author = await this.authorService.getAuthor(parsed.data.email)
+        const author = await this.authorService.getAuthor(authorRequest)
 
         if (!author) {
             logger.info("Author not found", { email: parsed.data.email })
@@ -92,7 +93,7 @@ export default class AuthorController{
     /**
      * Handles deleting authors
      * @route DELETE /api/authors/:id
-     * @param req - Express request object with body data
+    * @param req - Express request object with path parameters
      * @param res - Express response object
      */
 
@@ -101,8 +102,8 @@ export default class AuthorController{
         const parsed = DeleteAuthorRequestSchema.safeParse(req.params)
 
         if(!parsed.success){
-            logger.warn("Invalid query parameters", {error: parsed.error.issues})
-            throw new HttpError(400, "Invalid query parameters", "VALIDATION_ERROR", 
+            logger.warn("Invalid path parameters", {error: parsed.error.issues})
+            throw new HttpError(400, "Invalid path parameters", "VALIDATION_ERROR", 
                 parsed.error.issues.map(err => ({
                     field: err.path.join("."),
                     message: err.message
@@ -112,7 +113,14 @@ export default class AuthorController{
 
         logger.info("Deleting author", { id: parsed.data.id })
 
-        const author = await this.authorService.deleteAuthor(parsed.data.id)
+        const authorRequest: DeleteAuthorRequest = parsed.data
+
+        const author = await this.authorService.deleteAuthor(authorRequest)
+
+        if (!author) {
+            logger.info("Author not found", { id: parsed.data.id })
+            throw new HttpError(404, "Author not found", "NOT_FOUND")
+        }
 
         const responseValidation = AuthorResponseSchema.safeParse(author)
 
@@ -123,6 +131,6 @@ export default class AuthorController{
 
         logger.info("Author deleted successfully", author)
 
-        res.status(200).json(author)
+        res.status(200).json(responseValidation.data)
     }
 }
