@@ -122,14 +122,12 @@ Cookie: <session_cookie>
 ```
 
 **Get Session**
-
 ```http
 GET /api/auth/session
 Cookie: <session_cookie>
 ```
 
 **Response Example**:
-
 ```json
 {
   "user": {
