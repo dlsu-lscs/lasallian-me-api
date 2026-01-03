@@ -8,12 +8,28 @@ It is set up with the **Domain-Driven (Vertical Slicing)** architecture.
 
 All dependencies are installed during the project setup. To start the development server:
 
-1. **Create your `.env` file** using the env.example as a guide:
-   ```env
-   DATABASE_URL=postgresql://user:password@localhost:5432/database_name
-   ```
+1. **Create your `.env` file** from the template:
+
+   **macOS/Linux (bash)**
+
+```bash
+cp .env.example .env
+```
+
+**Windows (PowerShell)**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then update at least your database connection string:
+
+```env
+DATABASE_URL=postgres://postgres:password@localhost:5432/database_name
+```
 
 2. **Run database migrations**:
+
    ```bash
    pnpm db:migrate
    ```
@@ -27,15 +43,20 @@ The server will start with hot-reloading, meaning it will automatically restart 
 
 ## Available Scripts
 
--   `pnpm start`: Starts the production server (builds the project first).
--   `pnpm run dev`: Starts the development server with hot-reloading.
--   `pnpm run build`: Compiles the TypeScript code to JavaScript in the `dist` directory.
--   `pnpm run lint`: Lints the codebase for potential errors.
--   `pnpm run format`: Formats the code using Prettier.
--   `pnpm run db:generate`: Generates migration files from schema changes.
--   `pnpm run db:migrate`: Applies migrations to the database.
--   `pnpm run db:push`: Pushes schema changes directly to the database (dev only).
--   `pnpm run db:studio`: Opens Drizzle Studio for database management.
+- `pnpm dev`: Starts the development server with hot-reloading.
+- `pnpm start`: Starts the production server (builds the project first).
+- `pnpm build`: Compiles the TypeScript code to JavaScript.
+- `pnpm lint`: Lints the codebase for potential errors.
+- `pnpm lint:fix`: Lints and auto-fixes issues where possible.
+- `pnpm format`: Formats the code using Prettier.
+- `pnpm test`: Runs tests once.
+- `pnpm test:watch`: Runs tests in watch mode.
+- `pnpm test:coverage`: Runs tests with coverage.
+- `pnpm db:generate`: Generates migration files from schema changes.
+- `pnpm db:migrate`: Applies migrations to the database.
+- `pnpm db:push`: Pushes schema changes directly to the database (dev only).
+- `pnpm db:studio`: Opens Drizzle Studio for database management.
+- `pnpm db:seed`: Seeds the database.
 
 ## Database Migrations
 
@@ -48,6 +69,22 @@ pnpm run db:migrate   # Apply migrations to database
 
 ## API Documentation
 
+Default development base URL: `http://localhost:8000`
+
+### Swagger / OpenAPI
+
+Interactive Swagger UI is available at:
+
+```http
+GET /api-docs
+```
+
+Raw OpenAPI JSON is available at:
+
+```http
+GET /api-docs/openapi.json
+```
+
 ### Authentication
 
 This API uses [Better Auth](https://www.better-auth.com/) for OAuth authentication with Google.
@@ -59,34 +96,40 @@ This API uses [Better Auth](https://www.better-auth.com/) for OAuth authenticati
 Add these to your `.env` file:
 
 ```env
-BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:8000
 BETTER_AUTH_SECRET=your-secret-key
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-TRUSTED_ORIGINS=http://localhost:3000,http://localhost:5173
+TRUSTED_ORIGINS=http://localhost:3000
+CLIENT_URL=http://localhost:3000
 ```
 
 #### Endpoints
 
 **Sign In with Google**
+
 ```http
 GET /api/auth/sign-in/google
 ```
+
 Redirects to Google OAuth consent screen. After successful authentication, redirects back to your application with session cookies.
 
 **Sign Out**
+
 ```http
 POST /api/auth/sign-out
 Cookie: <session_cookie>
 ```
 
 **Get Session**
+
 ```http
 GET /api/auth/session
 Cookie: <session_cookie>
 ```
 
 **Response Example**:
+
 ```json
 {
   "user": {
@@ -119,10 +162,10 @@ Create a client instance in your Next.js app:
 
 ```typescript
 // lib/auth-client.ts
-import { createAuthClient } from "better-auth/react";
+import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient({
-  baseURL: "http://localhost:3000" // Your API URL
+  baseURL: 'http://localhost:8000', // Your API URL
 });
 ```
 
@@ -172,7 +215,7 @@ export default function UserProfile() {
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) return <div>Loading...</div>;
-  
+
   if (!session) return <div>Not authenticated</div>;
 
   return (
@@ -190,17 +233,17 @@ If not using Next.js or Better Auth client:
 
 ```javascript
 // Sign in - redirect to OAuth flow
-window.location.href = 'http://localhost:3000/api/auth/sign-in/google';
+window.location.href = 'http://localhost:8000/api/auth/sign-in/google';
 
 // Sign out
-await fetch('http://localhost:3000/api/auth/sign-out', {
+await fetch('http://localhost:8000/api/auth/sign-out', {
   method: 'POST',
-  credentials: 'include'
+  credentials: 'include',
 });
 
 // Get session
-const response = await fetch('http://localhost:3000/api/auth/session', {
-  credentials: 'include'
+const response = await fetch('http://localhost:8000/api/auth/session', {
+  credentials: 'include',
 });
 const session = await response.json();
 ```
@@ -210,29 +253,107 @@ const session = await response.json();
 To protect routes, use the auth middleware:
 
 ```typescript
-import { auth } from "@/auth/auth.config.js";
+import { auth } from '@/auth/auth.config.js';
 
 router.get('/protected', async (req, res) => {
   const session = await auth.api.getSession({ headers: req.headers });
-  
+
   if (!session) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-  
-  res.json({ message: "Protected data", user: session.user });
+
+  res.json({ message: 'Protected data', user: session.user });
 });
 ```
 
+### Authors
+
+**Base URL**: `/api/authors`
+
+#### API Key (for protected endpoints)
+
+Creating and deleting authors requires an API key via the `x-api-key` header.
+
+Add this to your `.env` file:
+
+```env
+API_SECRET_KEY=your-api-key
+```
+
+**Protected endpoints require this header:**
+
+```http
+x-api-key: <API_SECRET_KEY>
+```
+
+#### Endpoints
+
+**Get Author by Email**
+
+```http
+GET /api/authors/:email
+```
+
+**Response Example (200)**
+
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "description": "A brief bio",
+  "website": "https://example.com",
+  "logo": "https://example.com/logo.png",
+  "createdAt": "2024-01-01",
+  "updatedAt": "2024-01-01"
+}
+```
+
+**Create Author** (requires API key)
+
+```http
+POST /api/authors
+x-api-key: <API_SECRET_KEY>
+Content-Type: application/json
+```
+
+**Request Body Example**
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "description": "A brief bio",
+  "website": "https://example.com",
+  "logo": "https://example.com/logo.png"
+}
+```
+
+Notes:
+
+- `description`, `website`, and `logo` are optional.
+- `website` must be a valid URL when provided.
+
+**Delete Author by ID** (requires API key)
+
+```http
+DELETE /api/authors/:id
+x-api-key: <API_SECRET_KEY>
+```
+
+Common error responses:
+
+- `400` validation error (invalid `email`/`id` params or invalid request body)
+- `401` unauthorized (missing/invalid `x-api-key`)
+- `404` not found (no author matching the email/id)
+
 ## Tech Stack
 
--   **Runtime**: Node.js
--   **Framework**: Express.js
--   **Language**: TypeScript
--   **Logger**: Winston
--   **Linter**: ESLint
--   **Formatter**: Prettier
--   **Testing**: Vitest
--   **Development Runner**: `tsx`
-
-
-##
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Logger**: Winston
+- **Linter**: ESLint
+- **Formatter**: Prettier
+- **Testing**: Vitest
+- **Development Runner**: `tsx`
