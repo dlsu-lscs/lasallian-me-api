@@ -1,8 +1,4 @@
 import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-
-// Extend Zod with OpenAPI capabilities
-extendZodWithOpenApi(z);
 
 /**
  * Response DTO for a single application

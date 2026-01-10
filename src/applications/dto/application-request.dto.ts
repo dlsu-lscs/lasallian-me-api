@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import '@/shared/config/openapi.js'; 
 import { APPLICATION_CONSTANTS } from '../application.constants.js';
-
-// Extend Zod with OpenAPI capabilities
-extendZodWithOpenApi(z);
 
 /**
  * Zod schema for all query parameters (pagination + filters)

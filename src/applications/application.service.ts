@@ -18,7 +18,7 @@ export type NewApplication = typeof application.$inferInsert;
 /**
  * Service layer for application-related business logic
  */
-export class ApplicationService {
+export default class ApplicationService {
 
     /**
      * Retrieves a paginated list of applications with optional filters

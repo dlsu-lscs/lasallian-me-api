@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { ApplicationController } from './application.controller.js';
+import ApplicationService from "@/applications/application.service.js"
 
 const router = Router();
-const applicationController = new ApplicationController();
+
+const applicationService = new ApplicationService()
+const applicationController = new ApplicationController(applicationService);
 
 /**
  * @route GET /api/applications
