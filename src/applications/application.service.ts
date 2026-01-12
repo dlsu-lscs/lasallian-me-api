@@ -1,5 +1,6 @@
-import { ApplicationFilters } from './dto/index.js';
-import { application } from "@/shared/infrastructure/database/schema.js"
+import { application } from './application.model.js';
+import type { SelectApplication } from './application.model.js';
+import { ApplicationsListFilters } from './dto/index.js';
 import {db} from "@/shared/config/database.js"
 import { eq, SQL, gte, lte, between, and, or, like, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
@@ -8,12 +9,10 @@ import { APPLICATION_CONSTANTS } from './application.constants.js';
  * Service result type for paginated applications
  */
 export type ApplicationsServiceResult = {
-    data: Application[];
+    data: SelectApplication[];
     total: number;
 };
 
-export type Application = typeof application.$inferSelect;
-export type NewApplication = typeof application.$inferInsert;
 
 /**
  * Service layer for application-related business logic
@@ -27,11 +26,11 @@ export default class ApplicationService {
      * @param filters - Optional filters for searching and sorting
      * @returns Paginated applications data and total count
      */
-    async getApplications(
+    getPaginatedApplications = async(
         limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT, 
         page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE, 
-        filters?: ApplicationFilters
-    ): Promise<ApplicationsServiceResult> {
+        filters?: ApplicationsListFilters
+    ): Promise<ApplicationsServiceResult> => {
 
         // Input validation
         if (limit < 1 || page < 1) {
@@ -115,5 +114,20 @@ export default class ApplicationService {
             .offset(offset);
 
         return { data, total };
+    }
+
+    /**
+     * Retrieves a single application by its unique slug
+     * @param slug - Application slug
+     * @returns The application record, or undefined if not found
+     */
+    getApplicationBySlug = async (slug: string): Promise<SelectApplication | undefined> => {
+        const [result] = await db
+            .select()
+            .from(application)
+            .where(eq(application.slug, slug))
+            .limit(1);
+
+        return result;
     }
 }
