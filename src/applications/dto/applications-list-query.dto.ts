@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import '@/shared/config/openapi.js'; 
+import '@/shared/config/openapi.js';
 import { APPLICATION_CONSTANTS } from '../application.constants.js';
 
 /**
  * Zod schema for all query parameters (pagination + filters)
  */
-export const ApplicationsRequestSchema = z.object({
+export const ApplicationsListQuerySchema = z.object({
     // Pagination
     limit: z.coerce.number().min(1).max(APPLICATION_CONSTANTS.MAX_LIMIT).default(APPLICATION_CONSTANTS.DEFAULT_LIMIT)
         .openapi({ example: 10, description: 'Number of items per page' }),
@@ -33,15 +33,15 @@ export const ApplicationsRequestSchema = z.object({
         .openapi({ example: 'createdAt', description: 'Field to sort by' }),
     sortOrder: z.enum(['asc', 'desc']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_ORDER)
         .openapi({ example: 'desc', description: 'Sort order' }),
-}).openapi('ApplicationsRequest');
+}).openapi('ApplicationsListQuery');
 
 /**
  * Schema for just the filters (without pagination)
  */
-export const ApplicationFiltersSchema = ApplicationsRequestSchema.omit({ limit: true, page: true });
+export const ApplicationsListFiltersSchema = ApplicationsListQuerySchema.omit({ limit: true, page: true });
 
 /**
  * Infer TypeScript types from Zod schemas
  */
-export type ApplicationQuery = z.infer<typeof ApplicationsRequestSchema>;
-export type ApplicationFilters = z.infer<typeof ApplicationFiltersSchema>;
+export type ApplicationsListQuery = z.infer<typeof ApplicationsListQuerySchema>;
+export type ApplicationsListFilters = z.infer<typeof ApplicationsListFiltersSchema>;
