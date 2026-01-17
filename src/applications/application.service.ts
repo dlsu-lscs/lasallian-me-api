@@ -15,12 +15,10 @@ export type ApplicationsList = {
     total: number;
 };
 
-
 /**
  * Service layer for application-related business logic
  */
 export default class ApplicationService implements IApplicationService {
-
     /**
      * Retrieves a paginated list of applications with optional filters
      * @param limit - Maximum number of items per page
@@ -159,7 +157,6 @@ export default class ApplicationService implements IApplicationService {
      * @throws HttpError 409 if slug already exists
      */
     createApplication = async(app: InsertApplication): Promise<SelectApplication> => {
-        // Check for duplicate slug
         if (await this.slugExists(app.slug)) {
             throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
         }
@@ -207,6 +204,9 @@ export default class ApplicationService implements IApplicationService {
             .from(application)
             .where(eq(application.id, id))
             .limit(1);
+        if(!result){
+            throw new HttpError(404, "Application not found", "NOT_FOUND")
+        }
 
         return result;
     }
