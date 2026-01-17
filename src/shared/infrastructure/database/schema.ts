@@ -1,4 +1,5 @@
-import { pgTable, foreignKey, serial, varchar, integer, text, timestamp, unique, boolean } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, serial, varchar, integer, text, timestamp, unique, boolean, doublePrecision, primaryKey,check } from "drizzle-orm/pg-core"
+import {sql} from "drizzle-orm"
 
 export const application = pgTable("application", {
 	id: serial().primaryKey().notNull(),
@@ -100,47 +101,40 @@ export const user = pgTable("user", {
 	  .notNull(),
   });
   
+export const ratings = pgTable("ratings", {
+	id: serial().primaryKey().notNull(),
+	userId: text("user_id"),
+	applicationId: integer("application_id"),
+	comment: varchar({ length: 255 }),
+	isAnonymous: boolean("is_anonymous").default(false),
+	score: doublePrecision().default(0).notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "ratings_user_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.applicationId],
+			foreignColumns: [application.id],
+			name: "ratings_application_id_fkey"
+		}),
+	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
+]);
 
-
-
-// // ============================================
-// // APPLICATION TABLES
-// // ============================================
-
-// export const ratings = pgTable("ratings", {
-// 	id: serial().primaryKey().notNull(),
-// 	userId: text("user_id"),
-// 	applicationId: integer("application_id"),
-// 	comment: varchar({ length: 255 }),
-// 	isAnonymous: boolean("is_anonymous").default(false),
-// 	score: doublePrecision().default(0).notNull(),
-// }, (table) => [
-// 	foreignKey({
-// 			columns: [table.userId],
-// 			foreignColumns: [user.id],
-// 			name: "ratings_user_id_fkey"
-// 		}),
-// 	foreignKey({
-// 			columns: [table.applicationId],
-// 			foreignColumns: [applications.id],
-// 			name: "ratings_application_id_fkey"
-// 		}),
-// 	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
-// ]);
-
-// export const userFavorites = pgTable("user_favorites", {
-// 	userId: integer("user_id").notNull(),
-// 	applicationId: integer("application_id").notNull(),
-// }, (table) => [
-// 	foreignKey({
-// 			columns: [table.userId],
-// 			foreignColumns: [user.id],
-// 			name: "user_favorites_user_id_fkey"
-// 		}),
-// 	foreignKey({
-// 			columns: [table.applicationId],
-// 			foreignColumns: [applications.id],
-// 			name: "user_favorites_application_id_fkey"
-// 		}),
-// 	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorites_pkey"}),
-// ]);
+export const userFavorites = pgTable("user_favorites", {
+	userId: integer("user_id").notNull(),
+	applicationId: integer("application_id").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "user_favorites_user_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.applicationId],
+			foreignColumns: [application.id],
+			name: "user_favorites_application_id_fkey"
+		}),
+	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorites_pkey"}),
+]);
