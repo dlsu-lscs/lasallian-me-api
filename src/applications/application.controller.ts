@@ -16,7 +16,6 @@ import type { SelectApplication, InsertApplication } from './application.model.j
 export interface IApplicationService {
   getPaginatedApplications(limit: number, page: number, filters?: ApplicationsListFilters): Promise<ApplicationsList>;
   getApplicationBySlug(slug: string): Promise<SelectApplication>;
-  getApplicationById(id: number): Promise<SelectApplication | undefined>;
   createApplication(app: InsertApplication): Promise<SelectApplication>;
   patchApplicationById(id: number, updates: Partial<InsertApplication>): Promise<SelectApplication>;
   deleteApplicationById(id: number): Promise<SelectApplication>;

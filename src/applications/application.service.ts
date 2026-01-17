@@ -2,7 +2,7 @@ import { application } from './application.model.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
 import {db} from "@/shared/config/database.js"
-import { eq, SQL, gte, lte, between, and, or, like, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
+import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
@@ -72,8 +72,8 @@ export default class ApplicationService implements IApplicationService {
             const searchPattern = `%${search}%`;
             conditions.push(
                 or(
-                    like(application.title, searchPattern),
-                    like(application.description, searchPattern)
+                    ilike(application.title, searchPattern),
+                    ilike(application.description, searchPattern)
                 )!
             )
         }
@@ -196,22 +196,20 @@ export default class ApplicationService implements IApplicationService {
     /**
      * Retrieves a single application by its ID
      * @param id - Application ID
+     * @access Private 
      * @returns The application record, or undefined if not found
      */
-    getApplicationById = async (id: number): Promise<SelectApplication | undefined> => {
+    private getApplicationById = async (id: number): Promise<SelectApplication | undefined> => {
         const [result] = await db
             .select()
             .from(application)
             .where(eq(application.id, id))
             .limit(1);
-        if(!result){
-            throw new HttpError(404, "Application not found", "NOT_FOUND")
-        }
 
         return result;
     }
 
-    /** 
+    /**
      * Delete an application by its id
      * @param id - application id
      * @returns undefined
