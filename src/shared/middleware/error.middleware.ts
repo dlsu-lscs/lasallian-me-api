@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '@/shared/utils/logger.js';
 
@@ -24,8 +24,7 @@ export class HttpError extends Error {
 export const errorHandler = (
   err: Error,
   req: Request,
-  res: Response,
-  _next: NextFunction
+  res: Response
 ): void => {
   // Log the error details
   logger.error('Request Error', { 
@@ -43,7 +42,7 @@ export const errorHandler = (
       error: {
         message: err.message,
         code: err.code,
-        ...(err.details && { details: err.details })
+        ...(err.details ? { details: err.details } : {})
       }
     });
     return;
