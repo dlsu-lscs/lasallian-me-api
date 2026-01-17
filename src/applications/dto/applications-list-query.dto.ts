@@ -29,9 +29,9 @@ export const ApplicationsListQuerySchema = z.object({
         .openapi({ example: 123, description: 'Filter by author ID' }),
     
     // Sorting options
-    sortBy: z.enum(['createdAt', 'updatedAt', 'title']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_BY)
+    sortBy: z.enum(['createdAt', 'updatedAt', 'title']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_BY).optional()
         .openapi({ example: 'createdAt', description: 'Field to sort by' }),
-    sortOrder: z.enum(['asc', 'desc']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_ORDER)
+    sortOrder: z.enum(['asc', 'desc']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_ORDER).optional()
         .openapi({ example: 'desc', description: 'Sort order' }),
 }).openapi('ApplicationsListQuery');
 
