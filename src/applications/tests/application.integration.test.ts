@@ -1,42 +1,45 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { db } from '@/shared/config/database.js';
+import { describe, it, expect, beforeAll, afterAll, afterEach} from 'vitest';
+import { testdb } from '@/shared/config/testdatabase.js';
 import { application } from '../application.model.js';
 import ApplicationService from '../application.service.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { eq } from 'drizzle-orm';
+import { author } from '@/authors/author.model.js';
 
-/**
- * Integration tests - these test REAL database queries
- * 
- * Run with: TEST_DATABASE_URL=your_test_db_url npx vitest run application.integration.test.ts
- * 
- * IMPORTANT: Use a separate test database, not production!
- */
 
 describe("ApplicationService Integration Tests", () => {
     let service: ApplicationService;
     let testAppIds: number[] = []; // Track created apps for cleanup
+    let testAuthorId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         service = new ApplicationService();
+        const [createdAuthor] = await testdb.insert(author).values({name:"test-es", email: "test@gmail.com"}).returning();
+        testAuthorId = createdAuthor.id;
     });
 
     // Clean up test data after each test
     afterEach(async () => {
         for (const id of testAppIds) {
-            await db.delete(application).where(eq(application.id, id)).catch(() => {});
+            await testdb.delete(application).where(eq(application.id, id)).catch(() => {});
         }
         testAppIds = [];
     });
 
+    afterAll(
+        async () => {
+            await testdb.delete(author).where(eq(author.email, "test@gmail.com"))
+        }
+    )
+
     // Helper to create test application and track for cleanup
     const createTestApp = async (slug: string, title: string = 'Test App') => {
-        const [created] = await db.insert(application).values({
+        const [created] = await testdb.insert(application).values({
             slug,
             title,
             description: 'Test description',
             tags: ['test'],
-            authorId: 1,
+            authorId: testAuthorId,
         }).returning();
         testAppIds.push(created.id);
         return created;
@@ -67,7 +70,7 @@ describe("ApplicationService Integration Tests", () => {
             await createTestApp('search-test-other', 'Other Application');
 
             const result = await service.getPaginatedApplications(10, 1, { 
-                search: 'Unique XYZ' 
+                search: "Unique XYZ"
             });
 
             expect(result.data.some(app => app.slug === 'search-test-unique-xyz')).toBe(true);
@@ -76,7 +79,7 @@ describe("ApplicationService Integration Tests", () => {
         it("should filter by tags", async () => {
             await createTestApp('tag-test-1', 'Tagged App');
             // Update to add specific tag
-            await db.update(application)
+            await testdb.update(application)
                 .set({ tags: ['special-tag', 'test'] })
                 .where(eq(application.slug, 'tag-test-1'));
 
@@ -129,12 +132,12 @@ describe("ApplicationService Integration Tests", () => {
                 title: 'Integration Test App',
                 description: 'Created via integration test',
                 tags: ['integration'],
-                authorId: 1,
+                authorId: testAuthorId,
             });
             testAppIds.push(result.id);
 
             // Verify it's actually in the database
-            const [fromDb] = await db.select()
+            const [fromDb] = await testdb.select()
                 .from(application)
                 .where(eq(application.id, result.id));
 
@@ -150,7 +153,7 @@ describe("ApplicationService Integration Tests", () => {
                 title: 'Duplicate',
                 description: 'Should fail',
                 tags: [],
-                authorId: 1,
+                authorId: testAuthorId,
             })).rejects.toMatchObject({
                 statusCode: 409,
                 code: 'DUPLICATE_SLUG',
@@ -169,11 +172,15 @@ describe("ApplicationService Integration Tests", () => {
             await service.deleteApplicationById(id);
 
             // Verify it's gone
-            const [fromDb] = await db.select()
+            const [fromDb] = await testdb.select()
                 .from(application)
                 .where(eq(application.id, id));
 
             expect(fromDb).toBeUndefined();
         });
+
+        it("should throw when removing an non-existing application", async () => {
+            await expect(service.deleteApplicationById(0)).rejects.toThrow()
+        })
     });
 });
