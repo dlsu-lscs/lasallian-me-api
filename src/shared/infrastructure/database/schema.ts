@@ -123,7 +123,7 @@ export const ratings = pgTable("ratings", {
 ]);
 
 export const userFavorites = pgTable("user_favorites", {
-	userId: integer("user_id").notNull(),
+	userId: text("user_id").notNull(),
 	applicationId: integer("application_id").notNull(),
 }, (table) => [
 	foreignKey({
