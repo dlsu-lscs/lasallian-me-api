@@ -1,14 +1,16 @@
 import { application } from './application.model.js';
-import type { SelectApplication } from './application.model.js';
-import { ApplicationsListFilters } from './dto/index.js';
+import type { SelectApplication, InsertApplication } from './application.model.js';
+import type { ApplicationsListFilters } from './dto/index.js';
 import {db} from "@/shared/config/database.js"
 import { eq, SQL, gte, lte, between, and, or, like, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
+import { HttpError } from '@/shared/middleware/error.middleware.js';
+import { IApplicationService } from './application.controller.js';
 
 /**
  * Service result type for paginated applications
  */
-export type ApplicationsServiceResult = {
+export type ApplicationsList = {
     data: SelectApplication[];
     total: number;
 };
@@ -17,7 +19,7 @@ export type ApplicationsServiceResult = {
 /**
  * Service layer for application-related business logic
  */
-export default class ApplicationService {
+export default class ApplicationService implements IApplicationService {
 
     /**
      * Retrieves a paginated list of applications with optional filters
@@ -30,11 +32,11 @@ export default class ApplicationService {
         limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT, 
         page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE, 
         filters?: ApplicationsListFilters
-    ): Promise<ApplicationsServiceResult> => {
+    ): Promise<ApplicationsList> => {
 
         // Input validation
         if (limit < 1 || page < 1) {
-            throw new Error('Limit and page must be positive numbers');
+            throw new HttpError(400,'Limit and page must be positive numbers', "VALIDATION_ERROR");
         }
 
         const safeLimit = Math.min(limit, APPLICATION_CONSTANTS.MAX_LIMIT);
@@ -119,15 +121,111 @@ export default class ApplicationService {
     /**
      * Retrieves a single application by its unique slug
      * @param slug - Application slug
-     * @returns The application record, or undefined if not found
+     * @returns The application record
+     * @throws HttpError 404 if application not found
      */
-    getApplicationBySlug = async (slug: string): Promise<SelectApplication | undefined> => {
+    getApplicationBySlug = async (slug: string): Promise<SelectApplication> => {
         const [result] = await db
             .select()
             .from(application)
             .where(eq(application.slug, slug))
             .limit(1);
 
+        if (!result) {
+            throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+        }
+
         return result;
+    }
+
+    /**
+     * Checks if an application with the given slug exists
+     * @param slug - Application slug to check
+     * @returns true if slug exists, false otherwise
+     */
+    private slugExists = async (slug: string): Promise<boolean> => {
+        const [result] = await db
+            .select({ id: application.id })
+            .from(application)
+            .where(eq(application.slug, slug))
+            .limit(1);
+        return !!result;
+    }
+
+    /**
+     * Creates a single application
+     * @param app - Application data to insert
+     * @returns The created application
+     * @throws HttpError 409 if slug already exists
+     */
+    createApplication = async(app: InsertApplication): Promise<SelectApplication> => {
+        // Check for duplicate slug
+        if (await this.slugExists(app.slug)) {
+            throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
+        }
+
+        const [created] = await db.insert(application).values(app).returning()
+        return created
+    }
+
+    /**
+     * Partially updates an application
+     * @param id - Application ID
+     * @param updates - Partial application data to update
+     * @returns The updated application
+     * @throws HttpError 404 if application not found
+     * @throws HttpError 409 if new slug already exists
+     */
+    patchApplicationById = async(id: number, updates: Partial<InsertApplication>): 
+    Promise<SelectApplication> => 
+    {
+        const appExists = await this.getApplicationById(id)
+
+        if(!appExists){
+            throw new HttpError(404, "Application not found", "NOT_FOUND")
+        }
+
+        // Check for slug conflict if updating slug
+        if (updates.slug && updates.slug !== appExists.slug) {
+            if (await this.slugExists(updates.slug)) {
+                throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
+            }
+        }
+
+        const [patchedApp] = await db.update(application).set(updates).where(eq(application.id, id)).returning()
+        return patchedApp
+    }
+
+    /**
+     * Retrieves a single application by its ID
+     * @param id - Application ID
+     * @returns The application record, or undefined if not found
+     */
+    getApplicationById = async (id: number): Promise<SelectApplication | undefined> => {
+        const [result] = await db
+            .select()
+            .from(application)
+            .where(eq(application.id, id))
+            .limit(1);
+
+        return result;
+    }
+
+    /** 
+     * Delete an application by its id
+     * @param id - application id
+     * @returns undefined
+     * @throws - HTTPError 404 if application not found
+     */
+    deleteApplicationById = async(id: number): Promise<SelectApplication> =>
+    {
+        const appExists = await this.getApplicationById(id)
+        if(!appExists){
+            throw new HttpError(404, "Application not found", "NOT_FOUND")
+        }
+
+        const [deletedApp] = await db.delete(application).where(eq(application.id, id)).returning()
+
+        return deletedApp
     }
 }
