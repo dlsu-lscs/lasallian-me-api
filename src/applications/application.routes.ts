@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { ApplicationController } from './application.controller.js';
 import ApplicationService from "@/applications/application.service.js"
 import { requireApiKey } from '@/shared/middleware/auth.middleware.js';
+import { db } from '@/shared/config/database.js';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 const router = Router();
 
-const applicationService = new ApplicationService()
+const applicationService = new ApplicationService(db as NodePgDatabase);
 const applicationController = new ApplicationController(applicationService);
 
 /**
@@ -21,6 +23,13 @@ router.get('/', applicationController.getPaginatedApplications);
  * @access Public
  */
 router.get('/:slug', applicationController.getApplicationBySlug);
+
+/**
+ * @route @POST /api/applications
+ * @description Create an application
+ * @access private
+ */
+router.post('/', applicationController.createApplication)
 
 /**
  * @route PATCH /api/applications/:id
