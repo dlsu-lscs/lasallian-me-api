@@ -1,11 +1,11 @@
 import { application } from './application.model.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
-import {db} from "@/shared/config/database.js"
 import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 /**
  * Service result type for paginated applications
@@ -19,6 +19,8 @@ export type ApplicationsList = {
  * Service layer for application-related business logic
  */
 export default class ApplicationService implements IApplicationService {
+    constructor(private readonly db: NodePgDatabase) {}
+
     /**
      * Retrieves a paginated list of applications with optional filters
      * @param limit - Maximum number of items per page
@@ -99,13 +101,13 @@ export default class ApplicationService implements IApplicationService {
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
         
         // Get total count
-        const [{ value: total }] = await db
+        const [{ value: total }] = await this.db
             .select({ value: count() })
             .from(application)
             .where(whereClause);
 
         // Get paginated data
-        const data = await db
+        const data = await this.db
             .select()
             .from(application)
             .where(whereClause)
@@ -123,7 +125,7 @@ export default class ApplicationService implements IApplicationService {
      * @throws HttpError 404 if application not found
      */
     getApplicationBySlug = async (slug: string): Promise<SelectApplication> => {
-        const [result] = await db
+        const [result] = await this.db
             .select()
             .from(application)
             .where(eq(application.slug, slug))
@@ -142,7 +144,7 @@ export default class ApplicationService implements IApplicationService {
      * @returns true if slug exists, false otherwise
      */
     private slugExists = async (slug: string): Promise<boolean> => {
-        const [result] = await db
+        const [result] = await this.db
             .select({ id: application.id })
             .from(application)
             .where(eq(application.slug, slug))
@@ -161,7 +163,7 @@ export default class ApplicationService implements IApplicationService {
             throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
         }
 
-        const [created] = await db.insert(application).values(app).returning()
+        const [created] = await this.db.insert(application).values(app).returning()
         return created
     }
 
@@ -189,7 +191,7 @@ export default class ApplicationService implements IApplicationService {
             }
         }
 
-        const [patchedApp] = await db.update(application).set(updates).where(eq(application.id, id)).returning()
+        const [patchedApp] = await this.db.update(application).set(updates).where(eq(application.id, id)).returning()
         return patchedApp
     }
 
@@ -200,7 +202,7 @@ export default class ApplicationService implements IApplicationService {
      * @returns The application record, or undefined if not found
      */
     private getApplicationById = async (id: number): Promise<SelectApplication | undefined> => {
-        const [result] = await db
+        const [result] = await this.db
             .select()
             .from(application)
             .where(eq(application.id, id))
@@ -222,7 +224,7 @@ export default class ApplicationService implements IApplicationService {
             throw new HttpError(404, "Application not found", "NOT_FOUND")
         }
 
-        const [deletedApp] = await db.delete(application).where(eq(application.id, id)).returning()
+        const [deletedApp] = await this.db.delete(application).where(eq(application.id, id)).returning()
 
         return deletedApp
     }

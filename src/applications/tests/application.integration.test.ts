@@ -5,7 +5,7 @@ import ApplicationService from '../application.service.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { eq } from 'drizzle-orm';
 import { author } from '@/authors/author.model.js';
-
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 describe("ApplicationService Integration Tests", () => {
     let service: ApplicationService;
@@ -13,7 +13,8 @@ describe("ApplicationService Integration Tests", () => {
     let testAuthorId: number;
 
     beforeAll(async () => {
-        service = new ApplicationService();
+        // Run migrations first to ensure tables exist before seeding data
+        service = new ApplicationService(testdb as NodePgDatabase);
         const [createdAuthor] = await testdb.insert(author).values({name:"test-es", email: "test@gmail.com"}).returning();
         testAuthorId = createdAuthor.id;
     });

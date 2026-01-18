@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ApplicationService from '../application.service.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import type { SelectApplication, InsertApplication } from '../application.model.js';
+import { db } from '@/shared/config/database.js';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 // Mock the database module
 vi.mock('@/shared/config/database.js', () => ({
@@ -13,8 +15,7 @@ vi.mock('@/shared/config/database.js', () => ({
     }
 }));
 
-// Import the mocked db
-import { db } from '@/shared/config/database.js';
+
 
 // Helper to create mock application data
 const createMockApplication = (overrides?: Partial<SelectApplication>): SelectApplication => ({
@@ -36,7 +37,7 @@ describe("ApplicationService", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        service = new ApplicationService();
+        service = new ApplicationService(db as NodePgDatabase);
     });
 
     describe("getPaginatedApplications", () => {
