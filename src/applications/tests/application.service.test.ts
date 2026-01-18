@@ -1,44 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import ApplicationService from '../application.service.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import type { SelectApplication, InsertApplication } from '../application.model.js';
-import { db } from '@/shared/config/database.js';
+import { application } from '../application.model.js';
+import type { InsertApplication } from '../application.model.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-
-// Mock the database module
-vi.mock('@/shared/config/database.js', () => ({
-    db: {
-        select: vi.fn(),
-        insert: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-    }
-}));
-
-
-
-// Helper to create mock application data
-const createMockApplication = (overrides?: Partial<SelectApplication>): SelectApplication => ({
-    id: 1,
-    slug: 'test-app',
-    title: 'Test Application',
-    description: 'A test application',
-    url: "url.com",
-    previewImages: [],
-    tags: ['test', 'sample'],
-    authorId: 1,
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-01-01'),
-    ...overrides,
-});
+import { createTestDatabase } from '@/shared/config/test-database.js';
+import { PgliteDatabase } from 'drizzle-orm/pglite';
+import { PGlite } from '@electric-sql/pglite';
+import { author } from '@/authors/author.model.js';
+import { eq } from 'drizzle-orm';
 
 describe("ApplicationService", () => {
     let service: ApplicationService;
+    let db: PgliteDatabase;
+    let client: PGlite;
+    let testAuthorId: number;
 
-    beforeEach(() => {
-        vi.clearAllMocks();
+    beforeAll(async () => {
+        const testDb = await createTestDatabase();
+        db = testDb.db as unknown as PgliteDatabase;
+        client = testDb.client;
+
         service = new ApplicationService(db as NodePgDatabase);
+
+        // Create a test author
+        const [createdAuthor] = await db.insert(author).values({
+            name: "Test Author",
+            email: "test@example.com"
+        }).returning();
+        testAuthorId = createdAuthor.id;
     });
+
+    afterEach(async () => {
+        await db.delete(application);
+    });
+
+    afterAll(async () => {
+        await client.close();
+    });
+
+    // Helper to create an app
+    const createTestApp = async (overrides: Partial<InsertApplication> = {}) => {
+        const [created] = await db.insert(application).values({
+            slug: `test-app-${Math.random().toString(36).substring(7)}`,
+            title: 'Test Application',
+            description: 'A test application',
+            tags: ['test'],
+            authorId: testAuthorId,
+            ...overrides,
+        }).returning();
+        return created;
+    };
 
     describe("getPaginatedApplications", () => {
         it("should throw error when limit is less than 1", async () => {
@@ -54,100 +66,61 @@ describe("ApplicationService", () => {
         });
 
         it("should return paginated applications with correct structure", async () => {
-            const mockApps = [
-                createMockApplication({ id: 1, slug: 'app-1' }),
-                createMockApplication({ id: 2, slug: 'app-2' }),
-            ];
-
-            // Mock count query
-            const mockCountWhere = vi.fn().mockResolvedValue([{ value: 5 }]);
-            
-            // Mock data query
-            const mockOffset = vi.fn().mockResolvedValue(mockApps);
-            const mockLimit = vi.fn().mockReturnValue({ offset: mockOffset });
-            const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-            const mockFrom = vi.fn()
-                .mockReturnValueOnce({ where: mockCountWhere })  // First call for count
-                .mockReturnValueOnce({ where: mockWhere });      // Second call for data
-            
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFrom });
+            await createTestApp({ slug: 'app-1' });
+            await createTestApp({ slug: 'app-2' });
 
             const result = await service.getPaginatedApplications(2, 1);
 
             expect(result).toHaveProperty('data');
             expect(result).toHaveProperty('total');
-            expect(result.data).toEqual(mockApps);
-            expect(result.total).toBe(5);
+            expect(result.data).toHaveLength(2);
+            expect(result.total).toBe(2);
         });
 
         it("should cap limit at MAX_LIMIT", async () => {
-            const mockApps = [createMockApplication()];
-
-            // Mock count query
-            const mockCountWhere = vi.fn().mockResolvedValue([{ value: 1 }]);
-            
-            // Mock data query
-            const mockOffset = vi.fn().mockResolvedValue(mockApps);
-            const mockLimit = vi.fn().mockReturnValue({ offset: mockOffset });
-            const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-            const mockFrom = vi.fn()
-                .mockReturnValueOnce({ where: mockCountWhere })
-                .mockReturnValueOnce({ where: mockWhere });
-            
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFrom });
+            // Insert 105 apps
+            const apps = Array.from({ length: 105 }).map((_, i) => ({
+                slug: `limit-test-${i}`,
+                title: `App ${i}`,
+                description: 'desc',
+                tags: [],
+                authorId: testAuthorId
+            }));
+            await db.insert(application).values(apps);
 
             // Request 500, but MAX_LIMIT is 100
-            await service.getPaginatedApplications(500, 1);
+            const result = await service.getPaginatedApplications(500, 1);
 
-            // Verify limit was capped (check the limit mock was called)
-            expect(mockLimit).toHaveBeenCalled();
+            expect(result.data).toHaveLength(100);
+            expect(result.total).toBe(105);
         });
 
         it("should calculate correct offset for pagination", async () => {
-            const mockApps = [createMockApplication()];
+            for(let i=0; i<15; i++) {
+                await createTestApp({ 
+                    slug: `offset-test-${i}`, 
+                    title: `App ${i.toString().padStart(2, '0')}` 
+                });
+            }
 
-            const mockOffset = vi.fn().mockResolvedValue(mockApps);
-            const mockLimit = vi.fn().mockReturnValue({ offset: mockOffset });
-            const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-            const mockCountWhere = vi.fn().mockResolvedValue([{ value: 100 }]);
-            const mockFrom = vi.fn()
-                .mockReturnValueOnce({ where: mockCountWhere })
-                .mockReturnValueOnce({ where: mockWhere });
-            
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFrom });
+            // Sort by title ASC to be deterministic: App 00, App 01, ... App 14
+            // Page 2 with limit 5 should give App 05 to App 09
+            const result = await service.getPaginatedApplications(5, 2, { sortBy: 'title', sortOrder: 'asc' });
 
-            // Page 3 with limit 10 should have offset 20
-            await service.getPaginatedApplications(10, 3);
-
-            expect(mockOffset).toHaveBeenCalledWith(20);
+            expect(result.data).toHaveLength(5);
+            expect(result.data[0].title).toBe('App 05');
+            expect(result.data[4].title).toBe('App 09');
         });
     });
 
     describe("getApplicationBySlug", () => {
         it("should return application when found", async () => {
-            const mockApp = createMockApplication();
-            
-            // Setup mock chain: db.select().from().where().limit()
-            const mockLimit = vi.fn().mockResolvedValue([mockApp]);
-            const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFrom });
-
-            const result = await service.getApplicationBySlug('test-app');
-
-            expect(result).toEqual(mockApp);
+            const created = await createTestApp({ slug: 'test-slug' });
+            const result = await service.getApplicationBySlug('test-slug');
+            expect(result.id).toBe(created.id);
         });
 
         it("should throw 404 when application not found", async () => {
-            // Return empty array = not found
-            const mockLimit = vi.fn().mockResolvedValue([]);
-            const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFrom });
-
             await expect(service.getApplicationBySlug('nonexistent'))
                 .rejects
                 .toThrow(HttpError);
@@ -157,44 +130,32 @@ describe("ApplicationService", () => {
     describe("createApplication", () => {
         it("should create application when slug is unique", async () => {
             const newApp: InsertApplication = {
-                slug: 'new-app',
+                slug: 'new-unique-app',
                 title: 'New Application',
                 description: 'A new app',
                 tags: ['new'],
-                authorId: 1,
+                authorId: testAuthorId,
             };
-            const createdApp = createMockApplication({ ...newApp, id: 2 });
-
-            // Mock slugExists check (returns empty = slug doesn't exist)
-            const mockLimitCheck = vi.fn().mockResolvedValue([]);
-            const mockWhereCheck = vi.fn().mockReturnValue({ limit: mockLimitCheck });
-            const mockFromCheck = vi.fn().mockReturnValue({ where: mockWhereCheck });
-            
-            // Mock insert
-            const mockReturning = vi.fn().mockResolvedValue([createdApp]);
-            const mockValues = vi.fn().mockReturnValue({ returning: mockReturning });
-            (db.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: mockValues });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromCheck });
 
             const result = await service.createApplication(newApp);
 
-            expect(result).toEqual(createdApp);
+            expect(result.slug).toBe('new-unique-app');
+            
+            // Verify in DB
+            const [inDb] = await db.select().from(application).where(eq(application.id, result.id));
+            expect(inDb).toBeDefined();
         });
 
         it("should throw 409 when slug already exists", async () => {
-            const newApp: InsertApplication = {
-                slug: 'existing-app',
-                title: 'New Application',
-                description: 'A new app',
-                tags: ['new'],
-                authorId: 1,
-            };
+            await createTestApp({ slug: 'existing-slug' });
 
-            // Mock slugExists check (returns result = slug exists)
-            const mockLimitCheck = vi.fn().mockResolvedValue([{ id: 1 }]);
-            const mockWhereCheck = vi.fn().mockReturnValue({ limit: mockLimitCheck });
-            const mockFromCheck = vi.fn().mockReturnValue({ where: mockWhereCheck });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromCheck });
+            const newApp: InsertApplication = {
+                slug: 'existing-slug',
+                title: 'Duplicate',
+                description: 'A new app',
+                tags: [],
+                authorId: testAuthorId,
+            };
 
             await expect(service.createApplication(newApp))
                 .rejects
@@ -207,32 +168,18 @@ describe("ApplicationService", () => {
 
     describe("deleteApplicationById", () => {
         it("should delete application when it exists", async () => {
-            const mockApp = createMockApplication();
+            const app = await createTestApp();
+            
+            const result = await service.deleteApplicationById(app.id);
+            expect(result.id).toBe(app.id);
 
-            // Mock getApplicationById (app exists)
-            const mockLimitGet = vi.fn().mockResolvedValue([mockApp]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
-
-            // Mock delete
-            const mockReturning = vi.fn().mockResolvedValue([mockApp]);
-            const mockWhereDelete = vi.fn().mockReturnValue({ returning: mockReturning });
-            (db.delete as ReturnType<typeof vi.fn>).mockReturnValue({ where: mockWhereDelete });
-
-            const result = await service.deleteApplicationById(1);
-
-            expect(result).toEqual(mockApp);
+            // Verify in DB
+            const inDb = await db.select().from(application).where(eq(application.id, app.id));
+            expect(inDb).toHaveLength(0);
         });
 
         it("should throw 404 when application not found", async () => {
-            // Mock getApplicationById (app doesn't exist)
-            const mockLimitGet = vi.fn().mockResolvedValue([]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
-
-            await expect(service.deleteApplicationById(999))
+            await expect(service.deleteApplicationById(99999))
                 .rejects
                 .toMatchObject({
                     statusCode: 404,
@@ -243,36 +190,19 @@ describe("ApplicationService", () => {
 
     describe("patchApplicationById", () => {
         it("should update application when it exists", async () => {
-            const existingApp = createMockApplication({ id: 1, title: 'Old Title' });
-            const updates = { title: 'New Title' };
-            const updatedApp = createMockApplication({ ...existingApp, ...updates });
-
-            // Mock getApplicationById
-            const mockLimitGet = vi.fn().mockResolvedValue([existingApp]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
-
-            // Mock update
-            const mockReturning = vi.fn().mockResolvedValue([updatedApp]);
-            const mockWhereUpdate = vi.fn().mockReturnValue({ returning: mockReturning });
-            const mockSet = vi.fn().mockReturnValue({ where: mockWhereUpdate });
-            (db.update as ReturnType<typeof vi.fn>).mockReturnValue({ set: mockSet });
-
-            const result = await service.patchApplicationById(1, updates);
+            const app = await createTestApp({ title: 'Old Title' });
+            
+            const result = await service.patchApplicationById(app.id, { title: 'New Title' });
             
             expect(result.title).toBe('New Title');
-            expect(mockSet).toHaveBeenCalledWith(updates);
+            
+            // Verify in DB
+            const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+            expect(inDb.title).toBe('New Title');
         });
 
         it("should throw 404 when application not found", async () => {
-            // Mock getApplicationById (app doesn't exist)
-            const mockLimitGet = vi.fn().mockResolvedValue([]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
-
-            await expect(service.patchApplicationById(999, { title: 'New Title' }))
+            await expect(service.patchApplicationById(99999, { title: 'New Title' }))
                 .rejects
                 .toMatchObject({
                     statusCode: 404,
@@ -281,18 +211,10 @@ describe("ApplicationService", () => {
         });
 
         it("should throw 409 when updating to an existing slug", async () => {
-            const existingApp = createMockApplication({ slug: 'original-slug' });
+            await createTestApp({ slug: 'slug-a' });
+            const appB = await createTestApp({ slug: 'slug-b' });
 
-            // First call: getApplicationById returns existing app
-            // Second call: slugExists returns a result (slug taken)
-            const mockLimitGet = vi.fn()
-                .mockResolvedValueOnce([existingApp])  // getApplicationById
-                .mockResolvedValueOnce([{ id: 2 }]);   // slugExists (slug is taken)
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
-
-            await expect(service.patchApplicationById(1, { slug: 'taken-slug' }))
+            await expect(service.patchApplicationById(appB.id, { slug: 'slug-a' }))
                 .rejects
                 .toMatchObject({
                     statusCode: 409,
@@ -301,48 +223,21 @@ describe("ApplicationService", () => {
         });
 
         it("should allow updating to the same slug", async () => {
-            const existingApp = createMockApplication({ slug: 'my-slug' });
-            const updatedApp = createMockApplication({ slug: 'my-slug', title: 'Updated' });
+            const app = await createTestApp({ slug: 'my-slug', title: 'Old' });
 
-            // Mock getApplicationById
-            const mockLimitGet = vi.fn().mockResolvedValue([existingApp]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
+            const result = await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' });
 
-            // Mock update
-            const mockReturning = vi.fn().mockResolvedValue([updatedApp]);
-            const mockWhereUpdate = vi.fn().mockReturnValue({ returning: mockReturning });
-            const mockSet = vi.fn().mockReturnValue({ where: mockWhereUpdate });
-            (db.update as ReturnType<typeof vi.fn>).mockReturnValue({ set: mockSet });
-
-            // Updating with same slug should NOT trigger slug conflict check
-            const result = await service.patchApplicationById(1, { slug: 'my-slug', title: 'Updated' });
-
-            expect(result).toEqual(updatedApp);
+            expect(result.title).toBe('New');
+            expect(result.slug).toBe('my-slug');
         });
 
         it("should allow partial updates", async () => {
-            const existingApp = createMockApplication();
-            const updates = { description: 'Only updating description' };
-            const updatedApp = createMockApplication({ ...updates });
+            const app = await createTestApp({ title: 'Title', description: 'Desc' });
 
-            // Mock getApplicationById
-            const mockLimitGet = vi.fn().mockResolvedValue([existingApp]);
-            const mockWhereGet = vi.fn().mockReturnValue({ limit: mockLimitGet });
-            const mockFromGet = vi.fn().mockReturnValue({ where: mockWhereGet });
-            (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: mockFromGet });
+            const result = await service.patchApplicationById(app.id, { description: 'New Desc' });
 
-            // Mock update
-            const mockReturning = vi.fn().mockResolvedValue([updatedApp]);
-            const mockWhereUpdate = vi.fn().mockReturnValue({ returning: mockReturning });
-            const mockSet = vi.fn().mockReturnValue({ where: mockWhereUpdate });
-            (db.update as ReturnType<typeof vi.fn>).mockReturnValue({ set: mockSet });
-
-            const result = await service.patchApplicationById(1, updates);
-
-            expect(result.description).toBe('Only updating description');
-            expect(mockSet).toHaveBeenCalledWith(updates);
+            expect(result.description).toBe('New Desc');
+            expect(result.title).toBe('Title');
         });
     });
 })

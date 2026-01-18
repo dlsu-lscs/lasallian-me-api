@@ -1,48 +1,54 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach} from 'vitest';
-import { testdb } from '@/shared/config/testdatabase.js';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { application } from '../application.model.js';
+import type { InsertApplication } from '../application.model.js';
 import ApplicationService from '../application.service.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { eq } from 'drizzle-orm';
 import { author } from '@/authors/author.model.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-
+import { createTestDatabase } from '@/shared/config/test-database.js';
+import { PgliteDatabase } from 'drizzle-orm/pglite';
+import { PGlite } from '@electric-sql/pglite';
+  
 describe("ApplicationService Integration Tests", () => {
     let service: ApplicationService;
-    let testAppIds: number[] = []; // Track created apps for cleanup
     let testAuthorId: number;
+    let db: PgliteDatabase;
+    let client: PGlite;
 
     beforeAll(async () => {
-        // Run migrations first to ensure tables exist before seeding data
-        service = new ApplicationService(testdb as NodePgDatabase);
-        const [createdAuthor] = await testdb.insert(author).values({name:"test-es", email: "test@gmail.com"}).returning();
+        const testDb = await createTestDatabase();
+        db = testDb.db as unknown as PgliteDatabase;
+        client = testDb.client;
+
+        service = new ApplicationService(db as unknown as NodePgDatabase);
+        const [createdAuthor] = await db.insert(author).values({name:"test-es", email: "test@gmail.com"}).returning();
         testAuthorId = createdAuthor.id;
     });
 
     // Clean up test data after each test
     afterEach(async () => {
-        for (const id of testAppIds) {
-            await testdb.delete(application).where(eq(application.id, id)).catch(() => {});
-        }
-        testAppIds = [];
+        await db.delete(application);
     });
 
     afterAll(
         async () => {
-            await testdb.delete(author).where(eq(author.email, "test@gmail.com"))
+            await db.delete(author).where(eq(author.email, "test@gmail.com"))
+            await client.close();
         }
+        
     )
 
     // Helper to create test application and track for cleanup
-    const createTestApp = async (slug: string, title: string = 'Test App') => {
-        const [created] = await testdb.insert(application).values({
-            slug,
-            title,
+    const createTestApp = async (overrides: Partial<InsertApplication> = {}) => {
+        const [created] = await db.insert(application).values({
+            slug: `test-app-${Math.random().toString(36).substring(7)}`,
+            title: 'Test App',
             description: 'Test description',
             tags: ['test'],
             authorId: testAuthorId,
+            ...overrides,
         }).returning();
-        testAppIds.push(created.id);
         return created;
     };
 
@@ -50,7 +56,7 @@ describe("ApplicationService Integration Tests", () => {
         it("should correctly paginate results", async () => {
             // Create 5 test applications
             for (let i = 1; i <= 5; i++) {
-                await createTestApp(`pagination-test-${i}`, `App ${i}`);
+                await createTestApp({ slug: `pagination-test-${i}`, title: `App ${i}` });
             }
 
             // Get first page (2 items)
@@ -67,8 +73,8 @@ describe("ApplicationService Integration Tests", () => {
         });
 
         it("should filter by search term in title", async () => {
-            await createTestApp('search-test-unique-xyz', 'Unique XYZ Application');
-            await createTestApp('search-test-other', 'Other Application');
+            await createTestApp({ slug: 'search-test-unique-xyz', title: 'Unique XYZ Application' });
+            await createTestApp({ slug: 'search-test-other', title: 'Other Application' });
 
             const result = await service.getPaginatedApplications(10, 1, { 
                 search: "Unique XYZ"
@@ -78,11 +84,11 @@ describe("ApplicationService Integration Tests", () => {
         });
 
         it("should filter by tags", async () => {
-            await createTestApp('tag-test-1', 'Tagged App');
-            // Update to add specific tag
-            await testdb.update(application)
-                .set({ tags: ['special-tag', 'test'] })
-                .where(eq(application.slug, 'tag-test-1'));
+            await createTestApp({ 
+                slug: 'tag-test-1', 
+                title: 'Tagged App',
+                tags: ['special-tag', 'test']
+            });
 
             const result = await service.getPaginatedApplications(10, 1, { 
                 tags: ['special-tag'] 
@@ -92,10 +98,10 @@ describe("ApplicationService Integration Tests", () => {
         });
 
         it("should sort by createdAt descending by default", async () => {
-            await createTestApp('sort-test-first', 'First');
+            await createTestApp({ slug: 'sort-test-first', title: 'First' });
             // Small delay to ensure different timestamps
             await new Promise(resolve => setTimeout(resolve, 10));
-            await createTestApp('sort-test-second', 'Second');
+            await createTestApp({ slug: 'sort-test-second', title: 'Second' });
 
             const result = await service.getPaginatedApplications(10, 1);
             
@@ -111,7 +117,7 @@ describe("ApplicationService Integration Tests", () => {
 
     describe("getApplicationBySlug - Query Tests", () => {
         it("should find application by exact slug", async () => {
-            const testApp = await createTestApp('exact-slug-test');
+            const testApp = await createTestApp({ slug: 'exact-slug-test' });
 
             const result = await service.getApplicationBySlug('exact-slug-test');
 
@@ -135,10 +141,9 @@ describe("ApplicationService Integration Tests", () => {
                 tags: ['integration'],
                 authorId: testAuthorId,
             });
-            testAppIds.push(result.id);
 
             // Verify it's actually in the database
-            const [fromDb] = await testdb.select()
+            const [fromDb] = await db.select()
                 .from(application)
                 .where(eq(application.id, result.id));
 
@@ -147,7 +152,7 @@ describe("ApplicationService Integration Tests", () => {
         });
 
         it("should reject duplicate slugs", async () => {
-            await createTestApp('duplicate-slug-test');
+            await createTestApp({ slug: 'duplicate-slug-test' });
 
             await expect(service.createApplication({
                 slug: 'duplicate-slug-test', // Same slug!
@@ -162,18 +167,51 @@ describe("ApplicationService Integration Tests", () => {
         });
     });
 
+    describe("patchApplicationById - Query Tests", () => {
+        it("should update application fields in database", async () => {
+            const app = await createTestApp({ title: 'Old Title', description: 'Old Desc' });
+            
+            const updated = await service.patchApplicationById(app.id, { 
+                title: 'New Title' 
+            });
+
+            expect(updated.title).toBe('New Title');
+            expect(updated.description).toBe('Old Desc'); // Should remain unchanged
+
+            // Verify in DB
+            const [inDb] = await db.select()
+                .from(application)
+                .where(eq(application.id, app.id));
+            expect(inDb.title).toBe('New Title');
+        });
+
+        it("should fail when updating to existing slug", async () => {
+            await createTestApp({ slug: 'taken-slug' });
+            const app = await createTestApp({ slug: 'original-slug' });
+
+            await expect(service.patchApplicationById(app.id, { 
+                slug: 'taken-slug' 
+            })).rejects.toMatchObject({
+                statusCode: 409,
+                code: 'DUPLICATE_SLUG'
+            });
+        });
+
+        it("should throw 404 for non-existent application", async () => {
+            await expect(service.patchApplicationById(0, { title: 'New' }))
+                .rejects.toMatchObject({ statusCode: 404 });
+        });
+    });
+
     describe("deleteApplicationById - Query Tests", () => {
         it("should actually remove from database", async () => {
-            const testApp = await createTestApp('delete-test');
+            const testApp = await createTestApp({ slug: 'delete-test' });
             const id = testApp.id;
-            
-            // Remove from tracking since we're testing deletion
-            testAppIds = testAppIds.filter(appId => appId !== id);
 
             await service.deleteApplicationById(id);
 
             // Verify it's gone
-            const [fromDb] = await testdb.select()
+            const [fromDb] = await db.select()
                 .from(application)
                 .where(eq(application.id, id));
 
@@ -181,7 +219,10 @@ describe("ApplicationService Integration Tests", () => {
         });
 
         it("should throw when removing an non-existing application", async () => {
-            await expect(service.deleteApplicationById(0)).rejects.toThrow()
+            await expect(service.deleteApplicationById(0)).rejects.toMatchObject({
+                statusCode: 404,
+                code: 'NOT_FOUND'
+            });
         })
     });
 });

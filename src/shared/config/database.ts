@@ -3,6 +3,10 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { logger } from '@/shared/utils/logger.js';
 import { Pool } from 'pg';
+import { migrate } from "drizzle-orm/pglite/migrator";
+
+
+
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -15,4 +19,8 @@ if(db){
 } else{
     logger.error("Failed to connect to the database.");
 }
-export { db };
+
+async function applyMigrations() {
+    await migrate(db, { migrationsFolder: "drizzle" });
+  }
+export { db, pool, applyMigrations };
