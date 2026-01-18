@@ -30,6 +30,7 @@ router.get('/:slug', applicationController.getApplicationBySlug);
  * @access private
  */
 router.post('/', applicationController.createApplication)
+router.post('/', requireApiKey, applicationController.createApplication);
 
 /**
  * @route PATCH /api/applications/:id
