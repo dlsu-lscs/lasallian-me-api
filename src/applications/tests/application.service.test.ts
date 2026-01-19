@@ -36,6 +36,7 @@ describe("ApplicationService", () => {
     });
 
     afterAll(async () => {
+        await db.delete(author).where(eq(author.id, testAuthorId));
         await client.close();
     });
 

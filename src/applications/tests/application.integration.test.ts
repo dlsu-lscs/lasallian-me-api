@@ -33,7 +33,7 @@ describe("ApplicationService Integration Tests", () => {
 
     afterAll(
         async () => {
-            await db.delete(author).where(eq(author.email, "test@gmail.com"))
+            await db.delete(author).where(eq(author.id, testAuthorId));
             await client.close();
         }
         
@@ -97,21 +97,45 @@ describe("ApplicationService Integration Tests", () => {
             expect(result.data.some(app => app.tags?.includes('special-tag'))).toBe(true);
         });
 
+        it("should filter by authorId", async () => {
+            await createTestApp({ slug: 'author-1-app', authorId: testAuthorId });
+            
+            const result = await service.getPaginatedApplications(10, 1, { 
+                authorId: testAuthorId 
+            });
+
+            expect(result.total).toBe(1);
+            expect(result.data[0].authorId).toBe(testAuthorId);
+        });
+
+        it("should filter by date range", async () => {
+            const oldDate = new Date("2020-01-01");
+            const newDate = new Date("2024-01-01");
+            
+            await createTestApp({ slug: 'old-app', createdAt: oldDate });
+            await createTestApp({ slug: 'new-app', createdAt: newDate });
+
+            const result = await service.getPaginatedApplications(10, 1, { 
+                createdAfter: new Date("2023-01-01"),
+                createdBefore: new Date("2025-01-01")
+            });
+
+            expect(result.total).toBe(1);
+            expect(result.data[0].slug).toBe('new-app');
+        });
+
         it("should sort by createdAt descending by default", async () => {
-            await createTestApp({ slug: 'sort-test-first', title: 'First' });
-            // Small delay to ensure different timestamps
-            await new Promise(resolve => setTimeout(resolve, 10));
-            await createTestApp({ slug: 'sort-test-second', title: 'Second' });
+            const now = new Date();
+            const earlier = new Date(now.getTime() - 1000);
+
+            await createTestApp({ slug: 'sort-test-first', title: 'First', createdAt: earlier });
+            await createTestApp({ slug: 'sort-test-second', title: 'Second', createdAt: now });
 
             const result = await service.getPaginatedApplications(10, 1);
             
-            // Most recent should be first
-            const firstIndex = result.data.findIndex(app => app.slug === 'sort-test-first');
-            const secondIndex = result.data.findIndex(app => app.slug === 'sort-test-second');
-            
-            if (firstIndex !== -1 && secondIndex !== -1) {
-                expect(secondIndex).toBeLessThan(firstIndex);
-            }
+            // Most recent should be first (Second)
+            expect(result.data[0].slug).toBe('sort-test-second');
+            expect(result.data[1].slug).toBe('sort-test-first');
         });
     });
 
