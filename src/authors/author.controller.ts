@@ -1,6 +1,5 @@
 import { AuthorRequestSchema, CreateAuthorRequestSchema, DeleteAuthorRequestSchema } from "./dto/index.js";
 import { logger } from "@/shared/utils/logger.js";
-import { formatZodErrors } from "@/shared/utils/validation.js";
 import { Response, Request } from "express";
 import type { InsertAuthor, SelectAuthor } from "./author.model.js";
 import { HttpError } from "@/shared/middleware/error.middleware.js";
@@ -26,7 +25,7 @@ export default class AuthorController{
 
         if (!parsed.success) {
             logger.warn("Invalid path parameters", { errors: parsed.error.issues })
-            throw new HttpError(400, "Invalid path parameters", "VALIDATION_ERROR", formatZodErrors(parsed.error.issues))
+            throw parsed.error
         }
 
         logger.debug("Fetching author", { email: parsed.data.email })
@@ -54,7 +53,7 @@ export default class AuthorController{
 
         if (!parsed.success) {
             logger.warn("Invalid request body", { errors: parsed.error.issues })
-            throw new HttpError(400, "Invalid request body", "VALIDATION_ERROR", formatZodErrors(parsed.error.issues))
+            throw parsed.error
         }
 
         const authorData: InsertAuthor = parsed.data
@@ -79,7 +78,7 @@ export default class AuthorController{
 
         if (!parsed.success) {
             logger.warn("Invalid path parameters", { errors: parsed.error.issues })
-            throw new HttpError(400, "Invalid path parameters", "VALIDATION_ERROR", formatZodErrors(parsed.error.issues))
+            throw parsed.error
         }
 
         logger.info("Deleting author", { id: parsed.data.id })

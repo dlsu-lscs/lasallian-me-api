@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '@/shared/utils/logger.js';
 
@@ -24,7 +24,8 @@ export class HttpError extends Error {
 export const errorHandler = (
   err: Error,
   req: Request,
-  res: Response
+  res: Response,
+  _next: NextFunction
 ): void => {
   // Log the error details
   logger.error('Request Error', { 
@@ -54,10 +55,7 @@ export const errorHandler = (
       error: {
         message: 'Validation Error',
         code: 'VALIDATION_ERROR',
-        details: err.issues.map(issue => ({
-          field: issue.path.join('.'),
-          message: issue.message
-        }))
+        details: err.issues
       }
     });
     return;

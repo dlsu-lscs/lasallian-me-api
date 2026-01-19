@@ -8,10 +8,9 @@ import {
   PatchApplicationRequestSchema,
 } from './dto/index.js';
 import { logger } from '@/shared/utils/logger.js';
-import { HttpError } from '@/shared/middleware/error.middleware.js';
-import { formatZodErrors } from '@/shared/utils/validation.js';
 import type { ApplicationsListResponse, ApplicationsListFilters } from './dto/index.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
+
 
 export interface IApplicationService {
   getPaginatedApplications(limit: number, page: number, filters?: ApplicationsListFilters): Promise<ApplicationsList>;
@@ -27,15 +26,13 @@ export class ApplicationController {
   /**
    * Handles GET requests for applications list with pagination and filtering
    * @route GET /api/applications
-   * @param req - Express request object with query parameters
-   * @param res - Express response object
    */
   getPaginatedApplications = async (req: Request, res: Response): Promise<void> => {
     const parsed = ApplicationsListQuerySchema.safeParse(req.query);
     
     if (!parsed.success) {
       logger.warn('Invalid query parameters', { errors: parsed.error.issues });
-      throw new HttpError(400, 'Invalid query parameters', 'VALIDATION_ERROR', formatZodErrors(parsed.error.issues));
+      throw parsed.error;
     }
 
     const { limit, page, ...filters } = parsed.data;
@@ -68,15 +65,13 @@ export class ApplicationController {
   /**
    * Handles GET requests for a single application by slug
    * @route GET /api/applications/:slug
-   * @param req - Express request object with path parameters
-   * @param res - Express response object
    */
   getApplicationBySlug = async (req: Request, res: Response): Promise<void> => {
     const parsed = ApplicationSlugParamsSchema.safeParse(req.params);
 
     if (!parsed.success) {
       logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw new HttpError(400, 'Invalid path parameters', 'VALIDATION_ERROR', formatZodErrors(parsed.error.issues));
+      throw parsed.error;
     }
 
     logger.debug('Fetching application by slug', { slug: parsed.data.slug });
@@ -89,15 +84,13 @@ export class ApplicationController {
 
   /**
    * @route POST request for creating a single application
-   * @param req - Express request object with path parameters
-   * @param res - Express response object
    */
   createApplication = async(req: Request, res: Response): Promise<void> => {
     const parsed = CreateApplicationRequestSchema.safeParse(req.body)
-
+    
     if(!parsed.success){
       logger.warn('Invalid request body', { errors: parsed.error.issues });
-      throw new HttpError(400, "Invalid request body", "VALIDATION_ERROR", formatZodErrors(parsed.error.issues))
+      throw parsed.error;
     }
 
     logger.debug('Creating application', { slug: parsed.data.slug });
@@ -111,22 +104,20 @@ export class ApplicationController {
   /**
    * Handles PATCH requests for updating an application
    * @route PATCH /api/applications/:id
-   * @param req - Express request object with path parameters and body
-   * @param res - Express response object
    */
   patchApplicationById = async (req: Request, res: Response): Promise<void> => {
     const paramsResult = ApplicationIdParamsSchema.safeParse(req.params);
 
     if (!paramsResult.success) {
       logger.warn('Invalid path parameters', { errors: paramsResult.error.issues });
-      throw new HttpError(400, 'Invalid path parameters', 'VALIDATION_ERROR', formatZodErrors(paramsResult.error.issues));
+      throw paramsResult.error;
     }
 
     const bodyResult = PatchApplicationRequestSchema.safeParse(req.body);
 
     if (!bodyResult.success) {
       logger.warn('Invalid request body', { errors: bodyResult.error.issues });
-      throw new HttpError(400, 'Invalid request body', 'VALIDATION_ERROR', formatZodErrors(bodyResult.error.issues));
+      throw bodyResult.error;
     }
 
     const { id } = paramsResult.data;
@@ -142,15 +133,13 @@ export class ApplicationController {
   /**
    * Handles DELETE requests for removing an application
    * @route DELETE /api/applications/:id
-   * @param req - Express request object with path parameters
-   * @param res - Express response object
    */
   deleteApplicationById = async (req: Request, res: Response): Promise<void> => {
     const parsed = ApplicationIdParamsSchema.safeParse(req.params);
 
     if (!parsed.success) {
       logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw new HttpError(400, 'Invalid path parameters', 'VALIDATION_ERROR', formatZodErrors(parsed.error.issues));
+      throw parsed.error;
     }
 
     const { id } = parsed.data;
