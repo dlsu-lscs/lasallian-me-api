@@ -1,8 +1,13 @@
 import { registry, ErrorResponseSchema } from '@/shared/config/openapi.js';
-import { ApplicationsListQuerySchema, ApplicationSlugParamsSchema, ApplicationResponseSchema } from './dto/index.js';
 import { 
-  ApplicationsListResponseSchema 
-} from './dto/application-response.dto.js';
+  ApplicationsListQuerySchema, 
+  ApplicationSlugParamsSchema, 
+  ApplicationResponseSchema, 
+  CreateApplicationRequestSchema,
+  ApplicationIdParamsSchema,
+  PatchApplicationRequestSchema,
+  ApplicationsListResponseSchema
+} from './dto/index.js';
 
 /**
  * Register the GET /api/applications endpoint
@@ -83,6 +88,147 @@ registry.registerPath({
     },
     500: {
       description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Register the POST /api/applications
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/applications',
+  description: 'Create application, api key protected',
+  summary: 'Create application',
+  tags: ['Applications'],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: CreateApplicationRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'Successfully created application',
+      content: {
+        'application/json': {
+          schema: ApplicationResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid body request - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: 'Conflict - DUPLICATE_SLUG',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Register the PATCH /api/applications/:id endpoint
+ */
+registry.registerPath({
+  method: 'patch',
+  path: '/api/applications/{id}',
+  description: 'Partially update an application by ID, api key protected',
+  summary: 'Update application',
+  tags: ['Applications'],
+  request: {
+    params: ApplicationIdParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: PatchApplicationRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Successfully updated application',
+      content: {
+        'application/json': {
+          schema: ApplicationResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid request data - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Application not found - NOT_FOUND',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: 'Conflict - DUPLICATE_SLUG',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Register the DELETE /api/applications/:id endpoint
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/applications/{id}',
+  description: 'Delete an application by ID, api key protected',
+  summary: 'Delete application',
+  tags: ['Applications'],
+  request: {
+    params: ApplicationIdParamsSchema,
+  },
+  responses: {
+    200: {
+      description: 'Successfully deleted application',
+      content: {
+        'application/json': {
+          schema: ApplicationResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Application not found - NOT_FOUND',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
