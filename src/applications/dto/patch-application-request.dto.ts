@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import '@/shared/config/openapi.js';
 import { CreateApplicationRequestSchema } from './create-application-request.dto.js';
 
 /**

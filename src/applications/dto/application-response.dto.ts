@@ -1,5 +1,5 @@
 import { z } from 'zod';
-
+import '@/shared/config/openapi.js';
 /**
  * Response DTO for a single application
  */
