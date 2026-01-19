@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import z, { ZodError } from 'zod';
 import { logger } from '@/shared/utils/logger.js';
 
 /**
@@ -55,7 +55,7 @@ export const errorHandler = (
       error: {
         message: 'Validation Error',
         code: 'VALIDATION_ERROR',
-        details: err.issues
+        details: z.prettifyError(err)
       }
     });
     return;
