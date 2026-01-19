@@ -16,6 +16,7 @@ export const ApplicationResponseSchema = z.object({
   updatedAt: z.date().openapi({ example: '2025-01-01' }),
 }).openapi('ApplicationResponse');
 
+
 /**
  * Response DTO for paginated applications list
  */

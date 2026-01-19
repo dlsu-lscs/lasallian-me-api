@@ -13,25 +13,23 @@ export const ApplicationsListQuerySchema = z.object({
         .openapi({ example: 1, description: 'Page number' }),
     
     // Date range filters
-    createdAfter: z.coerce.date().optional()
+    createdAfter: z.coerce.date().nullish()
         .openapi({ example: '2025-01-01', description: 'Filter applications created after this date' }),
-    createdBefore: z.coerce.date().optional()
+    createdBefore: z.coerce.date().nullish()
         .openapi({ example: '2025-12-31', description: 'Filter applications created before this date' }),
     
     // Search filters
-    search: z.string().min(1).max(255).optional()
+    search: z.string().trim().min(1).max(255).nullish()
         .openapi({ example: 'web app', description: 'Search in title and description' }),
-    tags: z.string().transform(s => s.split(',')).pipe(z.array(z.string()))
-        .or(z.array(z.string()))
-        .optional()
-        .openapi({ example: 'web,mobile', description: 'Comma-separated list of tags' }),
-    authorId: z.coerce.number().int().positive().optional()
+    tags: z.array(z.string()).nullish()
+        .openapi({ example: ['web', 'mobile'], description: 'Filter by tags' }),
+    authorId: z.coerce.number().int().positive().nullish()
         .openapi({ example: 123, description: 'Filter by author ID' }),
     
     // Sorting options
-    sortBy: z.enum(['createdAt', 'updatedAt', 'title']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_BY).optional()
+    sortBy: z.enum(['createdAt', 'updatedAt', 'title']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_BY).nullish()
         .openapi({ example: 'createdAt', description: 'Field to sort by' }),
-    sortOrder: z.enum(['asc', 'desc']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_ORDER).optional()
+    sortOrder: z.enum(['asc', 'desc']).default(APPLICATION_CONSTANTS.DEFAULT_SORT_ORDER).nullish()
         .openapi({ example: 'desc', description: 'Sort order' }),
 }).openapi('ApplicationsListQuery');
 
