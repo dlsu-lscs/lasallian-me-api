@@ -25,11 +25,10 @@ router.get('/', applicationController.getPaginatedApplications);
 router.get('/:slug', applicationController.getApplicationBySlug);
 
 /**
- * @route @POST /api/applications
+ * @route POST /api/applications
  * @description Create an application
- * @access private
+ * @access Private
  */
-router.post('/', applicationController.createApplication)
 router.post('/', requireApiKey, applicationController.createApplication);
 
 /**
