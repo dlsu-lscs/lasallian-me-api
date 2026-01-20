@@ -45,15 +45,18 @@ const createMockRequest = (override: Partial<Request> = {}): Request => ({
 
 const createMockResponse = () => {
   const jsonMock = vi.fn();
-  const statusMock = vi.fn().mockReturnValue({ json: jsonMock });
+  const sendMock = vi.fn();
+  const statusMock = vi.fn().mockReturnValue({ json: jsonMock, send: sendMock });
   
   return {
     res: {
       status: statusMock,
       json: jsonMock,
+      send: sendMock,
     } as unknown as Response,
     jsonMock,
     statusMock,
+    sendMock,
   };
 };
 
@@ -87,7 +90,7 @@ describe('AuthorController', () => {
       await controller.getAuthor(req, res);
 
       // Assert
-      expect(mockService.getAuthor).toHaveBeenCalledWith({ email: 'john@example.com' });
+      expect(mockService.getAuthor).toHaveBeenCalledWith('john@example.com' );
       expect(statusMock).toHaveBeenCalledWith(200);
       expect(jsonMock).toHaveBeenCalledWith(fixtures.validAuthor);
     });
@@ -104,7 +107,7 @@ describe('AuthorController', () => {
         .rejects
         .toThrow(HttpError);
       
-      expect(mockService.getAuthor).toHaveBeenCalledWith({ email: 'missing@example.com' });
+      expect(mockService.getAuthor).toHaveBeenCalledWith('missing@example.com');
       expect(statusMock).not.toHaveBeenCalled();
     });
 
@@ -116,7 +119,7 @@ describe('AuthorController', () => {
       // Act & Assert
       await expect(controller.getAuthor(req, res))
         .rejects
-        .toThrow(HttpError);
+        .toThrow();
       
       expect(mockService.getAuthor).not.toHaveBeenCalled();
       expect(statusMock).not.toHaveBeenCalled();
@@ -149,7 +152,7 @@ describe('AuthorController', () => {
       // Act & Assert
       await expect(controller.postAuthor(req, res))
         .rejects
-        .toThrow(HttpError);
+        .toThrow();
       
       expect(mockService.createAuthor).not.toHaveBeenCalled();
       expect(statusMock).not.toHaveBeenCalled();
@@ -173,10 +176,10 @@ describe('AuthorController', () => {
   });
 
   describe('deleteAuthor', () => {
-    it('should return 200 and the deleted author', async () => {
+    it('should return 204 when author is deleted', async () => {
       // Arrange
       const req = createMockRequest({ params: { id: '1' } });
-      const { res, statusMock, jsonMock } = createMockResponse();
+      const { res, statusMock, sendMock } = createMockResponse();
       
       mockService.deleteAuthor.mockResolvedValue(fixtures.validAuthor);
 
@@ -184,9 +187,9 @@ describe('AuthorController', () => {
       await controller.deleteAuthor(req, res);
 
       // Assert
-      expect(mockService.deleteAuthor).toHaveBeenCalledWith({ id: 1 });
-      expect(statusMock).toHaveBeenCalledWith(200);
-      expect(jsonMock).toHaveBeenCalledWith(fixtures.validAuthor);
+      expect(mockService.deleteAuthor).toHaveBeenCalledWith(1);
+      expect(statusMock).toHaveBeenCalledWith(204);
+      expect(sendMock).toHaveBeenCalled();
     });
 
     it('should throw 404 HttpError when author is not found', async () => {
@@ -201,7 +204,7 @@ describe('AuthorController', () => {
         .rejects
         .toThrow(HttpError);
       
-      expect(mockService.deleteAuthor).toHaveBeenCalledWith({ id: 999 });
+      expect(mockService.deleteAuthor).toHaveBeenCalledWith(999);
       expect(statusMock).not.toHaveBeenCalled();
     });
 
@@ -213,7 +216,7 @@ describe('AuthorController', () => {
       // Act & Assert
       await expect(controller.deleteAuthor(req, res))
         .rejects
-        .toThrow(HttpError);
+        .toThrow();
       
       expect(mockService.deleteAuthor).not.toHaveBeenCalled();
       expect(statusMock).not.toHaveBeenCalled();
@@ -231,7 +234,7 @@ describe('AuthorController', () => {
         .rejects
         .toThrow('Database error');
       
-      expect(mockService.deleteAuthor).toHaveBeenCalledWith({ id: 1 });
+      expect(mockService.deleteAuthor).toHaveBeenCalledWith(1);
       expect(statusMock).not.toHaveBeenCalled();
     });
   });

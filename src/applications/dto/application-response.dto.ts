@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-
-// Extend Zod with OpenAPI capabilities
-extendZodWithOpenApi(z);
-
+import '@/shared/config/openapi.js';
 /**
  * Response DTO for a single application
  */
@@ -16,9 +12,10 @@ export const ApplicationResponseSchema = z.object({
   url: z.string().nullable().openapi({ example: 'https://example.com' }),
   previewImages: z.array(z.string()).nullable().openapi({ example: ['https://example.com/image1.jpg'] }),
   tags: z.array(z.string()).nullable().openapi({ example: ['web', 'mobile'] }),
-  createdAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
-  updatedAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
+  createdAt: z.date().openapi({ example: '2025-01-01' }),
+  updatedAt: z.date().openapi({ example: '2025-01-01' }),
 }).openapi('ApplicationResponse');
+
 
 /**
  * Response DTO for paginated applications list

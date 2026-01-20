@@ -1,78 +1,154 @@
 import type { Request, Response } from 'express';
-import { ApplicationService } from './application.service.js';
-import { ApplicationsRequestSchema } from './dto/index.js';
+import type { ApplicationsList } from './application.service.js';
+import {
+  ApplicationsListQuerySchema,
+  ApplicationSlugParamsSchema,
+  ApplicationIdParamsSchema,
+  CreateApplicationRequestSchema,
+  PatchApplicationRequestSchema,
+} from './dto/index.js';
 import { logger } from '@/shared/utils/logger.js';
-import type { ApplicationsListResponse } from './dto/index.js';
+import type { ApplicationsListResponse, ApplicationsListFilters } from './dto/index.js';
+import type { SelectApplication, InsertApplication } from './application.model.js';
+
+
+export interface IApplicationService {
+  getPaginatedApplications(limit: number, page: number, filters?: ApplicationsListFilters): Promise<ApplicationsList>;
+  getApplicationBySlug(slug: string): Promise<SelectApplication>;
+  createApplication(app: InsertApplication): Promise<SelectApplication>;
+  patchApplicationById(id: number, updates: Partial<InsertApplication>): Promise<SelectApplication>;
+  deleteApplicationById(id: number): Promise<SelectApplication>;
+}
 
 export class ApplicationController {
-  private applicationService: ApplicationService;
-
-  constructor() {
-    this.applicationService = new ApplicationService();
-  }
+  constructor(private applicationService: IApplicationService) {}
 
   /**
    * Handles GET requests for applications list with pagination and filtering
    * @route GET /api/applications
-   * @param req - Express request object with query parameters
-   * @param res - Express response object
    */
-  getApplications = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const parsed = ApplicationsRequestSchema.safeParse(req.query);
-      
-      if (!parsed.success) {
-        logger.warn('Invalid query parameters', { errors: parsed.error.issues });
-        res.status(400).json({ 
-          error: {
-            message: 'Invalid query parameters',
-            code: 'VALIDATION_ERROR',
-            details: parsed.error.issues.map(err => ({
-              field: err.path.join('.'),
-              message: err.message
-            }))
-          }
-        });
-        return;
-      }
-
-      const { limit, page, ...filters } = parsed.data;
-
-      logger.debug('Fetching applications', { limit, page, filters });
-
-      const { data, total } = await this.applicationService.getApplications(limit, page, filters);
-
-      logger.info('Applications retrieved successfully', { 
-        count: data.length, 
-        total,
-        page, 
-        limit 
-      });
-
-      const response: ApplicationsListResponse = {
-        data,
-        meta: {
-          page,
-          limit,
-          count: data.length,
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      };
-
-      res.status(200).json(response);
-
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Error fetching applications', { error: errorMessage });
-      res.status(500).json({ 
-        error: {
-          message: 'Internal server error',
-          code: 'INTERNAL_ERROR',
-          ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
-        }
-      });
+  getPaginatedApplications = async (req: Request, res: Response): Promise<void> => {
+    const parsed = ApplicationsListQuerySchema.safeParse(req.query);
+    
+    if (!parsed.success) {
+      logger.warn('Invalid query parameters', { errors: parsed.error.issues });
+      throw parsed.error;
     }
-  };
+
+    const { limit, page, ...filters } = parsed.data;
+
+    logger.debug('Fetching applications', { limit, page, filters });
+
+    const { data, total } = await this.applicationService.getPaginatedApplications(limit, page, filters);
+
+    logger.info('Applications retrieved successfully', { 
+      count: data.length, 
+      total,
+      page, 
+      limit 
+    });
+
+    const response: ApplicationsListResponse = {
+      data,
+      meta: {
+        page,
+        limit,
+        count: data.length,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+
+    res.status(200).json(response);
+  }
+
+  /**
+   * Handles GET requests for a single application by slug
+   * @route GET /api/applications/:slug
+   */
+  getApplicationBySlug = async (req: Request, res: Response): Promise<void> => {
+    const parsed = ApplicationSlugParamsSchema.safeParse(req.params);
+
+    if (!parsed.success) {
+      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
+      throw parsed.error;
+    }
+
+    logger.debug('Fetching application by slug', { slug: parsed.data.slug });
+
+    const application = await this.applicationService.getApplicationBySlug(parsed.data.slug);
+
+    logger.info('Application retrieved successfully', { applicationId: application.id, slug: application.slug });
+    res.status(200).json(application);
+  }
+
+  /**
+   * @route POST request for creating a single application
+   */
+  createApplication = async(req: Request, res: Response): Promise<void> => {
+    const parsed = CreateApplicationRequestSchema.safeParse(req.body)
+    
+    if(!parsed.success){
+      logger.warn('Invalid request body', { errors: parsed.error.issues });
+      throw parsed.error;
+    }
+
+    logger.debug('Creating application', { slug: parsed.data.slug });
+
+    const application = await this.applicationService.createApplication(parsed.data)
+
+    logger.info('Application created successfully', { applicationId: application.id, slug: application.slug });
+    res.status(201).json(application)
+  }
+
+  /**
+   * Handles PATCH requests for updating an application
+   * @route PATCH /api/applications/:id
+   */
+  patchApplicationById = async (req: Request, res: Response): Promise<void> => {
+    const paramsResult = ApplicationIdParamsSchema.safeParse(req.params);
+
+    if (!paramsResult.success) {
+      logger.warn('Invalid path parameters', { errors: paramsResult.error.issues });
+      throw paramsResult.error;
+    }
+
+    const bodyResult = PatchApplicationRequestSchema.safeParse(req.body);
+
+    if (!bodyResult.success) {
+      logger.warn('Invalid request body', { errors: bodyResult.error.issues });
+      throw bodyResult.error;
+    }
+
+    const { id } = paramsResult.data;
+
+    logger.debug('Patching application', { id, updates: bodyResult.data });
+
+    const application = await this.applicationService.patchApplicationById(id, bodyResult.data);
+
+    logger.info('Application patched successfully', { applicationId: application.id, slug: application.slug });
+    res.status(200).json(application);
+  }
+
+  /**
+   * Handles DELETE requests for removing an application
+   * @route DELETE /api/applications/:id
+   */
+  deleteApplicationById = async (req: Request, res: Response): Promise<void> => {
+    const parsed = ApplicationIdParamsSchema.safeParse(req.params);
+
+    if (!parsed.success) {
+      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
+      throw parsed.error;
+    }
+
+    const { id } = parsed.data;
+
+    logger.debug('Deleting application', { id });
+
+    const application = await this.applicationService.deleteApplicationById(id);
+
+    logger.info('Application deleted successfully', { applicationId: application.id, slug: application.slug });
+    res.status(200).json(application);
+  }
 }
-6
