@@ -146,6 +146,31 @@ describe("FavoritesService", () => {
         });
     });
 
+    describe("getApplicationFavoritesCount", () => {
+        it("should return 0 when no users favorited an application", async () => {
+            const count = await service.getApplicationFavoritesCount(firstApplicationId);
+            expect(count).toBe(0);
+        });
+
+        it("should return the total number of users who favorited an application", async () => {
+            await service.createFavorite({
+                userId: firstUserId,
+                applicationId: firstApplicationId
+            });
+            await service.createFavorite({
+                userId: secondUserId,
+                applicationId: firstApplicationId
+            });
+            await service.createFavorite({
+                userId: firstUserId,
+                applicationId: secondApplicationId
+            });
+
+            const count = await service.getApplicationFavoritesCount(firstApplicationId);
+            expect(count).toBe(2);
+        });
+    });
+
     describe("deleteFavorite", () => {
         it("should delete a favorite", async () => {
             await service.createFavorite({

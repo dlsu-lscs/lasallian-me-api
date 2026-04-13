@@ -1,7 +1,7 @@
 import { application } from './application.model.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
-import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps } from 'drizzle-orm';
+import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, inArray } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
@@ -14,7 +14,6 @@ export type ApplicationsList = {
     data: SelectApplication[];
     total: number;
 };
-
 /**
  * Service layer for application-related business logic
  */
@@ -33,7 +32,7 @@ export default class ApplicationService implements IApplicationService {
         page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE, 
         filters?: ApplicationsListFilters
     ): Promise<ApplicationsList> => {
-
+        inArray()
         // Input validation
         if (limit < 1 || page < 1) {
             throw new HttpError(400,'Limit and page must be positive numbers', "VALIDATION_ERROR");
@@ -43,8 +42,8 @@ export default class ApplicationService implements IApplicationService {
         const offset = (page - 1) * safeLimit;
         
         
-        const createdAfter = filters?.createdAfter;
-        const createdBefore = filters?.createdBefore;
+        const createdAfter = filters?.createdAfter ? new Date(filters.createdAfter) : undefined;
+        const createdBefore = filters?.createdBefore ? new Date(filters.createdBefore) : undefined;
         const tags = filters?.tags;
         const authorId = filters?.authorId;
         const search = filters?.search;
@@ -62,15 +61,15 @@ export default class ApplicationService implements IApplicationService {
             conditions.push(lte(application.createdAt, createdBefore))
         }
 
-        if(authorId !== undefined){
+        if(authorId != null){
             conditions.push(eq(application.authorId, authorId))
         }
 
-        if(tags !== undefined && tags.length > 0){
+        if(tags != null && tags.length > 0){
             conditions.push(arrayOverlaps(application.tags, tags))
         }
 
-        if(search !== undefined && search.trim() !== ''){
+        if(search != null && search.trim() !== ''){
             const searchPattern = `%${search}%`;
             conditions.push(
                 or(
