@@ -1,7 +1,7 @@
 import {z} from 'zod'
 import '@/shared/config/openapi.js';
 export const CreateApplicationRequestSchema = z.object({
-    title: z.string().trim().min(1, 'Title is ro equired').openapi({ example: 'My Awesome App' }),
+    title: z.string().trim().min(1, 'Title is required').openapi({ example: 'My Awesome App' }),
     slug: z.string().trim().toLowerCase().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens').openapi({ example: 'my-awesome-app' }),
     authorId: z.number().openapi({ example: 123 }),
     description: z.string().trim().nullish().openapi({ example: 'A description of the application' }),
