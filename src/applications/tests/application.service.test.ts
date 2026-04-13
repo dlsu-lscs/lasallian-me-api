@@ -9,12 +9,15 @@ import { PgliteDatabase } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import { author } from '@/authors/author.model.js';
 import { eq } from 'drizzle-orm';
+import { userFavorites } from '@/favorites/favorites.model.js';
+import { user } from '@/users/user.model.js';
 
 describe("ApplicationService", () => {
     let service: ApplicationService;
     let db: PgliteDatabase;
     let client: PGlite;
     let testAuthorId: number;
+    const testUserId = 'app-favorites-user';
 
     beforeAll(async () => {
         const testDb = await createTestDatabase();
@@ -29,13 +32,21 @@ describe("ApplicationService", () => {
             email: "test@example.com"
         }).returning();
         testAuthorId = createdAuthor.id;
+
+        await db.insert(user).values({
+            id: testUserId,
+            name: 'Application Favorites User',
+            email: 'application-favorites-user@example.com',
+        });
     });
 
     afterEach(async () => {
+        await db.delete(userFavorites);
         await db.delete(application);
     });
 
     afterAll(async () => {
+        await db.delete(user).where(eq(user.id, testUserId));
         await db.delete(author).where(eq(author.id, testAuthorId));
         await client.close();
     });
@@ -76,6 +87,24 @@ describe("ApplicationService", () => {
             expect(result).toHaveProperty('total');
             expect(result.data).toHaveLength(2);
             expect(result.total).toBe(2);
+        });
+
+        it("should include favoritesCount for each application", async () => {
+            const firstApp = await createTestApp({ slug: 'favorite-count-app-1' });
+            const secondApp = await createTestApp({ slug: 'favorite-count-app-2' });
+
+            await db.insert(userFavorites).values({
+                userId: testUserId,
+                applicationId: firstApp.id,
+            });
+
+            const result = await service.getPaginatedApplications(10, 1);
+
+            const first = result.data.find((app) => app.id === firstApp.id);
+            const second = result.data.find((app) => app.id === secondApp.id);
+
+            expect(first?.favoritesCount).toBe(1);
+            expect(second?.favoritesCount).toBe(0);
         });
 
         it("should cap limit at MAX_LIMIT", async () => {

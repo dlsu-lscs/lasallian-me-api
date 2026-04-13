@@ -16,12 +16,19 @@ export const ApplicationResponseSchema = z.object({
   updatedAt: z.date().openapi({ example: '2025-01-01' }),
 }).openapi('ApplicationResponse');
 
+/**
+ * Response DTO for a single application list item
+ */
+export const ApplicationListItemResponseSchema = ApplicationResponseSchema.extend({
+  favoritesCount: z.number().int().nonnegative().openapi({ example: 12 }),
+}).openapi('ApplicationListItemResponse');
+
 
 /**
  * Response DTO for paginated applications list
  */
 export const ApplicationsListResponseSchema = z.object({
-  data: z.array(ApplicationResponseSchema),
+  data: z.array(ApplicationListItemResponseSchema),
   meta: z.object({
     page: z.number().openapi({ example: 1 }),
     limit: z.number().openapi({ example: 10 }),
@@ -32,4 +39,5 @@ export const ApplicationsListResponseSchema = z.object({
 }).openapi('ApplicationsListResponse');
 
 export type ApplicationResponse = z.infer<typeof ApplicationResponseSchema>;
+export type ApplicationListItemResponse = z.infer<typeof ApplicationListItemResponseSchema>;
 export type ApplicationsListResponse = z.infer<typeof ApplicationsListResponseSchema>;

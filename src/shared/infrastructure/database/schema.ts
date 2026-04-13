@@ -1,4 +1,4 @@
-import { pgTable, foreignKey, serial, varchar, integer, text, timestamp, unique, boolean, doublePrecision, primaryKey,check } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, serial, varchar, integer, text, timestamp, unique, boolean, doublePrecision, primaryKey,check, index } from "drizzle-orm/pg-core"
 import {sql} from "drizzle-orm"
 
 export const application = pgTable("application", {
@@ -16,6 +16,10 @@ export const application = pgTable("application", {
 		.$onUpdate(() => /* @__PURE__ */ new Date())
 		.notNull(),
 }, (table) => [
+	index("application_author_id_idx").on(table.authorId),
+	index("application_created_at_idx").on(table.createdAt),
+	index("application_updated_at_idx").on(table.updatedAt),
+	index("application_title_idx").on(table.title),
 	foreignKey({
 			columns: [table.authorId],
 			foreignColumns: [author.id],
@@ -66,7 +70,9 @@ export const user = pgTable("user", {
 	userId: text("user_id")
 	  .notNull()
 	  .references(() => user.id, { onDelete: "cascade" }),
-  });
+  }, (table) => [
+	index("session_user_id_idx").on(table.userId),
+  ]);
   
   export const account = pgTable("account", {
 	id: text("id").primaryKey(),
@@ -87,7 +93,10 @@ export const user = pgTable("user", {
 	  .defaultNow()
 	  .$onUpdate(() => /* @__PURE__ */ new Date())
 	  .notNull(),
-  });
+  }, (table) => [
+	index("account_user_id_idx").on(table.userId),
+	index("account_provider_account_idx").on(table.providerId, table.accountId),
+  ]);
   
   export const verification = pgTable("verification", {
 	id: text("id").primaryKey(),
@@ -119,6 +128,8 @@ export const ratings = pgTable("ratings", {
 			foreignColumns: [application.id],
 			name: "ratings_application_id_fkey"
 		}),
+	index("ratings_user_id_idx").on(table.userId),
+	index("ratings_application_id_idx").on(table.applicationId),
 	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
 ]);
 
@@ -126,6 +137,7 @@ export const userFavorites = pgTable("user_favorites", {
 	userId: text("user_id").notNull(),
 	applicationId: integer("application_id").notNull(),
 }, (table) => [
+	index("user_favorites_application_id_idx").on(table.applicationId),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],

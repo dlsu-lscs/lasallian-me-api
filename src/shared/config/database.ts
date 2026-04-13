@@ -1,9 +1,10 @@
 // Database configuration
+<<<<<<< Updated upstream
+=======
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { logger } from '@/shared/utils/logger.js';
 import { Pool } from 'pg';
-import { migrate } from "drizzle-orm/pglite/migrator";
 
 
 
@@ -13,14 +14,14 @@ const pool = new Pool({
 });
 const db = drizzle(pool);
 
-if(db){
-    await db.execute('SELECT 1')
-    logger.info("Database connection verified successfully.");
-} else{
-    logger.error("Failed to connect to the database.");
+try {
+  await db.execute('SELECT 1');
+  logger.info('Database connection verified successfully.');
+} catch (error) {
+  logger.error('Failed to connect to the database.', { error });
+  throw error;
 }
 
-async function applyMigrations() {
-    await migrate(db, { migrationsFolder: "drizzle" });
-  }
-export { db, pool, applyMigrations };
+
+export { db, pool};
+>>>>>>> Stashed changes

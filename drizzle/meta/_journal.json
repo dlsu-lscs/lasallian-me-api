@@ -15,6 +15,20 @@
       "when": 1768741181079,
       "tag": "0001_flat_runaways",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776091588592,
+      "tag": "0002_goofy_sebastian_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776091951729,
+      "tag": "0003_wonderful_james_howlett",
+      "breakpoints": true
     }
   ]
 }

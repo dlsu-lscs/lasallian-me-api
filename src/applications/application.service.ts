@@ -6,12 +6,17 @@ import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { userFavorites } from '@/shared/infrastructure/database/schema.js';
+
+export type ApplicationListItem = SelectApplication & {
+    favoritesCount: number;
+}
 
 /**
  * Service result type for paginated applications
  */
 export type ApplicationsList = {
-    data: SelectApplication[];
+    data: ApplicationListItem[];
     total: number;
 };
 /**
@@ -32,7 +37,6 @@ export default class ApplicationService implements IApplicationService {
         page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE, 
         filters?: ApplicationsListFilters
     ): Promise<ApplicationsList> => {
-        inArray()
         // Input validation
         if (limit < 1 || page < 1) {
             throw new HttpError(400,'Limit and page must be positive numbers', "VALIDATION_ERROR");
@@ -114,7 +118,30 @@ export default class ApplicationService implements IApplicationService {
             .limit(safeLimit)
             .offset(offset);
 
-        return { data, total };
+        // Get favorite counts for current page applications in one query
+        const applicationIds = data.map((app) => app.id)
+
+        const favoriteCounts = applicationIds.length > 0
+            ? await this.db
+                .select({
+                    applicationId: userFavorites.applicationId,
+                    value: count(),
+                })
+                .from(userFavorites)
+                .where(inArray(userFavorites.applicationId, applicationIds))
+                .groupBy(userFavorites.applicationId)
+            : []
+
+        const favoriteCountMap = new Map<number, number>(
+            favoriteCounts.map((row) => [row.applicationId, Number(row.value)])
+        )
+
+        const applicationsWithFavoriteCount: ApplicationListItem[] = data.map((app) => ({
+            ...app,
+            favoritesCount: favoriteCountMap.get(app.id) ?? 0,
+        }))
+
+        return { data: applicationsWithFavoriteCount, total };
     }
 
     /**
