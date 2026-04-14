@@ -105,6 +105,7 @@ registry.registerPath({
   path: '/api/applications',
   description: 'Create application, api key protected',
   summary: 'Create application',
+  security: [{ ApiKeyAuth: [] }],
   tags: ['Applications'],
   request: {
     body: {
@@ -159,6 +160,7 @@ registry.registerPath({
   path: '/api/applications/{id}',
   description: 'Partially update an application by ID, api key protected',
   summary: 'Update application',
+  security: [{ ApiKeyAuth: [] }],
   tags: ['Applications'],
   request: {
     params: ApplicationIdParamsSchema,
@@ -214,6 +216,7 @@ registry.registerPath({
   path: '/api/applications/{id}',
   description: 'Delete an application by ID, api key protected',
   summary: 'Delete application',
+  security: [{ ApiKeyAuth: [] }],
   tags: ['Applications'],
   request: {
     params: ApplicationIdParamsSchema,

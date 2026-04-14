@@ -127,6 +127,7 @@ registry.registerPath({
   description: "Create a favorite relation between a user and an application",
   summary: "Create favorite",
   tags: ["Favorites"],
+  security: [{ ApiKeyAuth: [] }],
   request: {
     body: {
       content: {
@@ -172,6 +173,7 @@ registry.registerPath({
   path: "/api/favorites/{userId}/{applicationId}",
   description: "Delete a favorite relation by user and application IDs",
   summary: "Delete favorite",
+  security: [{ ApiKeyAuth: [] }],
   tags: ["Favorites"],
   request: {
     params: DeleteFavoriteParamsSchema,
