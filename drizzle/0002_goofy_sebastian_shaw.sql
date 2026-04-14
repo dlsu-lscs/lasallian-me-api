@@ -1,0 +1,1 @@
+CREATE INDEX "user_favorites_application_id_idx" ON "user_favorites" USING btree ("application_id");
