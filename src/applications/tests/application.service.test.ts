@@ -11,6 +11,7 @@ import { author } from '@/authors/author.model.js';
 import { eq } from 'drizzle-orm';
 import { userFavorites } from '@/favorites/favorites.model.js';
 import { user } from '@/users/user.model.js';
+import { seed } from 'drizzle-seed';
 
 describe("ApplicationService", () => {
     let service: ApplicationService;
@@ -26,18 +27,30 @@ describe("ApplicationService", () => {
 
         service = new ApplicationService(db as NodePgDatabase);
 
-        // Create a test author
-        const [createdAuthor] = await db.insert(author).values({
-            name: "Test Author",
-            email: "test@example.com"
-        }).returning();
-        testAuthorId = createdAuthor.id;
+        await seed(db, { author, user }, { seed: 42 }).refine((funcs) => ({
+            author: {
+                count: 1,
+                columns: {
+                    name: funcs.valuesFromArray({ values: ['Test Author'] }),
+                    email: funcs.valuesFromArray({ values: ['test@example.com'] }),
+                },
+            },
+            user: {
+                count: 1,
+                columns: {
+                    id: funcs.valuesFromArray({ values: [testUserId] }),
+                    name: funcs.valuesFromArray({ values: ['Application Favorites User'] }),
+                    email: funcs.valuesFromArray({ values: ['application-favorites-user@example.com'] }),
+                },
+            },
+        }));
 
-        await db.insert(user).values({
-            id: testUserId,
-            name: 'Application Favorites User',
-            email: 'application-favorites-user@example.com',
-        });
+        const [seededAuthor] = await db.select({ id: author.id }).from(author).where(eq(author.email, 'test@example.com'));
+        if (!seededAuthor) {
+            throw new Error('Failed to seed test author.');
+        }
+
+        testAuthorId = seededAuthor.id;
     });
 
     afterEach(async () => {

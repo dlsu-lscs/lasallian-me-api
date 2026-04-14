@@ -3,17 +3,15 @@ import FavoritesService from "../favorites.service.js";
 import { PgliteDatabase } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { createTestDatabase } from "@/shared/config/test-database.js";
-import { application } from "@/applications/application.model.js";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { userFavorites } from "../favorites.model.js";
-import { user } from "@/users/user.model.js";
-import { author } from "@/authors/author.model.js";
+import { seed } from "drizzle-seed";
+import { application, author, user, userFavorites } from "@/shared/infrastructure/database/schema.js";
+
 
 describe("FavoritesService", () => {
     let service: FavoritesService;
     let db: PgliteDatabase;
     let client: PGlite;
-    let testAuthorId: number;
     let firstApplicationId: number;
     let secondApplicationId: number;
 
@@ -25,43 +23,49 @@ describe("FavoritesService", () => {
         db = testDb.db as unknown as PgliteDatabase;
         client = testDb.client;
 
+        await seed(db, { application, author, user }, { seed: 42 }).refine((funcs) => ({
+            author: {
+                count: 1,
+                columns: {
+                    name: funcs.valuesFromArray({ values: ["Test Author"] }),
+                    email: funcs.valuesFromArray({ values: ["test@example.com"] }),
+                },
+            },
+            application: {
+                count: 2,
+                columns: {
+                    title: funcs.valuesFromArray({ values: ["Test App 1", "Test App 2"], isUnique: true }),
+                    slug: funcs.valuesFromArray({ values: ["test-app-1", "test-app-2"], isUnique: true }),
+                },
+            },
+            user: {
+                count: 2,
+                columns: {
+                    id: funcs.valuesFromArray({ values: [firstUserId, secondUserId], isUnique: true }),
+                    name: funcs.valuesFromArray({ values: ["Test User One", "Test User Two"], isUnique: true }),
+                    email: funcs.valuesFromArray({
+                        values: ["test-user-one@gmail.com", "test-user-two@gmail.com"],
+                        isUnique: true,
+                    }),
+                },
+            },
+        }));
+
         service = new FavoritesService(db as NodePgDatabase);
 
-        const [createdAuthor] = await db.insert(author).values({
-            name: "Test Author",
-            email: "test@example.com"
-        }).returning();
+        const seededApplications = await db
+            .select({ id: application.id, slug: application.slug })
+            .from(application);
 
-        testAuthorId = createdAuthor.id;
+        const firstApplication = seededApplications.find((seededApplication) => seededApplication.slug === "test-app-1");
+        const secondApplication = seededApplications.find((seededApplication) => seededApplication.slug === "test-app-2");
 
-        const [firstApplication] = await db.insert(application).values({
-            title: "Test App 1",
-            slug: "test-app-1",
-            authorId: testAuthorId
-        }).returning();
+        if (!firstApplication || !secondApplication) {
+            throw new Error("Failed to seed expected test applications.");
+        }
 
         firstApplicationId = firstApplication.id;
-
-        const [secondApplication] = await db.insert(application).values({
-            title: "Test App 2",
-            slug: "test-app-2",
-            authorId: testAuthorId
-        }).returning();
-
         secondApplicationId = secondApplication.id;
-
-        await db.insert(user).values([
-            {
-                id: firstUserId,
-                name: "Test User One",
-                email: "test-user-one@gmail.com"
-            },
-            {
-                id: secondUserId,
-                name: "Test User Two",
-                email: "test-user-two@gmail.com"
-            }
-        ]);
     });
 
     afterEach(async () => {
