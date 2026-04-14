@@ -207,6 +207,23 @@ describe("ApplicationService", () => {
                     code: 'DUPLICATE_SLUG',
                 });
         });
+
+        it("should throw 404 when author does not exist", async () => {
+            const newApp: InsertApplication = {
+                slug: 'missing-author-app',
+                title: 'Missing Author',
+                description: 'Should fail because author does not exist',
+                tags: [],
+                authorId: 999_999,
+            };
+
+            await expect(service.createApplication(newApp))
+                .rejects
+                .toMatchObject({
+                    statusCode: 404,
+                    code: 'NOT_FOUND',
+                });
+        });
     });
 
     describe("deleteApplicationById", () => {
@@ -281,6 +298,17 @@ describe("ApplicationService", () => {
 
             expect(result.description).toBe('New Desc');
             expect(result.title).toBe('Title');
+        });
+
+        it("should throw 404 when updating to a non-existent author", async () => {
+            const app = await createTestApp({ title: 'Title' });
+
+            await expect(service.patchApplicationById(app.id, { authorId: 999_999 }))
+                .rejects
+                .toMatchObject({
+                    statusCode: 404,
+                    code: 'NOT_FOUND',
+                });
         });
     });
 })

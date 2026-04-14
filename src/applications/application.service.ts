@@ -7,6 +7,7 @@ import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { userFavorites } from '@/shared/infrastructure/database/schema.js';
+import { author } from '@/authors/author.model.js';
 
 export type ApplicationListItem = SelectApplication & {
     favoritesCount: number;
@@ -161,12 +162,31 @@ export default class ApplicationService implements IApplicationService {
     }
 
     /**
+     * Checks if an author with the given ID exists
+     * @param authorId - Author ID to check
+     * @returns true if author exists, false otherwise
+     */
+    private authorExists = async (authorId: number): Promise<boolean> => {
+        const [result] = await this.db
+            .select({ id: author.id })
+            .from(author)
+            .where(eq(author.id, authorId))
+            .limit(1);
+
+        return !!result;
+    }
+
+    /**
      * Creates a single application
      * @param app - Application data to insert
      * @returns The created application
      * @throws HttpError 409 if slug already exists
      */
     createApplication = async(app: InsertApplication): Promise<SelectApplication> => {
+        if (!(await this.authorExists(app.authorId))) {
+            throw new HttpError(404, "Author not found", "NOT_FOUND")
+        }
+
         if (await this.slugExists(app.slug)) {
             throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
         }
@@ -197,6 +217,14 @@ export default class ApplicationService implements IApplicationService {
             if (await this.slugExists(updates.slug)) {
                 throw new HttpError(409, "Application with this slug already exists", "DUPLICATE_SLUG")
             }
+        }
+
+        if (
+            updates.authorId !== undefined &&
+            updates.authorId !== appExists.authorId &&
+            !(await this.authorExists(updates.authorId))
+        ) {
+            throw new HttpError(404, "Author not found", "NOT_FOUND")
         }
 
         const [patchedApp] = await this.db.update(application).set(updates).where(eq(application.id, id)).returning()
