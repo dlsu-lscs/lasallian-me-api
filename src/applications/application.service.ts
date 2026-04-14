@@ -1,7 +1,7 @@
 import { application } from './application.model.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
-import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, inArray } from 'drizzle-orm';
+import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, sql, getTableColumns } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
@@ -109,39 +109,21 @@ export default class ApplicationService implements IApplicationService {
             .from(application)
             .where(whereClause);
 
-        // Get paginated data
+        // Get paginated data and favorites count in one query to avoid N+1.
         const data = await this.db
-            .select()
+            .select({
+                ...getTableColumns(application),
+                favoritesCount: sql<number>`count(${userFavorites.userId})::int`,
+            })
             .from(application)
+            .leftJoin(userFavorites, eq(application.id, userFavorites.applicationId))
             .where(whereClause)
+            .groupBy(application.id)
             .orderBy(orderByClause)
             .limit(safeLimit)
             .offset(offset);
 
-        // Get favorite counts for current page applications in one query
-        const applicationIds = data.map((app) => app.id)
-
-        const favoriteCounts = applicationIds.length > 0
-            ? await this.db
-                .select({
-                    applicationId: userFavorites.applicationId,
-                    value: count(),
-                })
-                .from(userFavorites)
-                .where(inArray(userFavorites.applicationId, applicationIds))
-                .groupBy(userFavorites.applicationId)
-            : []
-
-        const favoriteCountMap = new Map<number, number>(
-            favoriteCounts.map((row) => [row.applicationId, Number(row.value)])
-        )
-
-        const applicationsWithFavoriteCount: ApplicationListItem[] = data.map((app) => ({
-            ...app,
-            favoritesCount: favoriteCountMap.get(app.id) ?? 0,
-        }))
-
-        return { data: applicationsWithFavoriteCount, total };
+        return { data, total };
     }
 
     /**
