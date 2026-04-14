@@ -1,6 +1,4 @@
 // Database configuration
-<<<<<<< Updated upstream
-=======
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { logger } from '@/shared/utils/logger.js';
@@ -24,4 +22,3 @@ try {
 
 
 export { db, pool};
->>>>>>> Stashed changes
