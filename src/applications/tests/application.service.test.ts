@@ -9,12 +9,16 @@ import { PgliteDatabase } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import { author } from '@/authors/author.model.js';
 import { eq } from 'drizzle-orm';
+import { userFavorite } from '@/favorites/favorites.model.js';
+import { user } from '@/users/user.model.js';
+import { seed } from 'drizzle-seed';
 
 describe("ApplicationService", () => {
     let service: ApplicationService;
     let db: PgliteDatabase;
     let client: PGlite;
     let testAuthorId: number;
+    const testUserId = 'app-favorites-user';
 
     beforeAll(async () => {
         const testDb = await createTestDatabase();
@@ -23,19 +27,39 @@ describe("ApplicationService", () => {
 
         service = new ApplicationService(db as NodePgDatabase);
 
-        // Create a test author
-        const [createdAuthor] = await db.insert(author).values({
-            name: "Test Author",
-            email: "test@example.com"
-        }).returning();
-        testAuthorId = createdAuthor.id;
+        await seed(db, { author, user }, { seed: 42 }).refine((funcs) => ({
+            author: {
+                count: 1,
+                columns: {
+                    name: funcs.valuesFromArray({ values: ['Test Author'] }),
+                    email: funcs.valuesFromArray({ values: ['test@example.com'] }),
+                },
+            },
+            user: {
+                count: 1,
+                columns: {
+                    id: funcs.valuesFromArray({ values: [testUserId] }),
+                    name: funcs.valuesFromArray({ values: ['Application Favorites User'] }),
+                    email: funcs.valuesFromArray({ values: ['application-favorites-user@example.com'] }),
+                },
+            },
+        }));
+
+        const [seededAuthor] = await db.select({ id: author.id }).from(author).where(eq(author.email, 'test@example.com'));
+        if (!seededAuthor) {
+            throw new Error('Failed to seed test author.');
+        }
+
+        testAuthorId = seededAuthor.id;
     });
 
     afterEach(async () => {
+        await db.delete(userFavorite);
         await db.delete(application);
     });
 
     afterAll(async () => {
+        await db.delete(user).where(eq(user.id, testUserId));
         await db.delete(author).where(eq(author.id, testAuthorId));
         await client.close();
     });
@@ -76,6 +100,24 @@ describe("ApplicationService", () => {
             expect(result).toHaveProperty('total');
             expect(result.data).toHaveLength(2);
             expect(result.total).toBe(2);
+        });
+
+        it("should include favoritesCount for each application", async () => {
+            const firstApp = await createTestApp({ slug: 'favorite-count-app-1' });
+            const secondApp = await createTestApp({ slug: 'favorite-count-app-2' });
+
+            await db.insert(userFavorite).values({
+                userId: testUserId,
+                applicationId: firstApp.id,
+            });
+
+            const result = await service.getPaginatedApplications(10, 1);
+
+            const first = result.data.find((app) => app.id === firstApp.id);
+            const second = result.data.find((app) => app.id === secondApp.id);
+
+            expect(first?.favoritesCount).toBe(1);
+            expect(second?.favoritesCount).toBe(0);
         });
 
         it("should cap limit at MAX_LIMIT", async () => {
@@ -165,6 +207,23 @@ describe("ApplicationService", () => {
                     code: 'DUPLICATE_SLUG',
                 });
         });
+
+        it("should throw 404 when author does not exist", async () => {
+            const newApp: InsertApplication = {
+                slug: 'missing-author-app',
+                title: 'Missing Author',
+                description: 'Should fail because author does not exist',
+                tags: [],
+                authorId: 999_999,
+            };
+
+            await expect(service.createApplication(newApp))
+                .rejects
+                .toMatchObject({
+                    statusCode: 404,
+                    code: 'NOT_FOUND',
+                });
+        });
     });
 
     describe("deleteApplicationById", () => {
@@ -239,6 +298,17 @@ describe("ApplicationService", () => {
 
             expect(result.description).toBe('New Desc');
             expect(result.title).toBe('Title');
+        });
+
+        it("should throw 404 when updating to a non-existent author", async () => {
+            const app = await createTestApp({ title: 'Title' });
+
+            await expect(service.patchApplicationById(app.id, { authorId: 999_999 }))
+                .rejects
+                .toMatchObject({
+                    statusCode: 404,
+                    code: 'NOT_FOUND',
+                });
         });
     });
 })

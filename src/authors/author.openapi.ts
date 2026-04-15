@@ -98,6 +98,14 @@ registry.registerPath({
         },
       },
     },
+    409: {
+      description: 'Author with this email already exists - DUPLICATE_EMAIL',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
     500: {
       description: 'Internal server error - INTERNAL_ERROR',
       content: {

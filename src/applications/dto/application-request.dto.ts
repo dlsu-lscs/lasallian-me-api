@@ -17,9 +17,9 @@ export const ApplicationsRequestSchema = z.object({
     
     // Date range filters
     createdAfter: z.coerce.date().optional()
-        .openapi({ example: '2025-01-01', description: 'Filter applications created after this date' }),
+        .openapi({ example: '2025-01-01T00:00:00.000Z', description: 'Filter applications created after this date' }),
     createdBefore: z.coerce.date().optional()
-        .openapi({ example: '2025-12-31', description: 'Filter applications created before this date' }),
+        .openapi({ example: '2025-12-31T23:59:59.999Z', description: 'Filter applications created before this date' }),
     
     // Search filters
     search: z.string().min(1).max(255).optional()

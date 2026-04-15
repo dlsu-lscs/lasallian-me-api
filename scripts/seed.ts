@@ -1,172 +1,145 @@
+import { reset, seed } from 'drizzle-seed';
+
 import { db } from '../src/shared/config/database.js';
-import { application as applications, author as authors } from '../src/shared/infrastructure/database/schema.js';
+import {
+  account,
+  application,
+  author,
+  ratings,
+  session,
+  user,
+  userFavorite,
+  verification,
+} from '../src/shared/infrastructure/database/schema.js';
 import { logger } from '../src/shared/utils/logger.js';
 
-async function seed() {
+const AUTHORS_COUNT = 8;
+const APPLICATIONS_COUNT = 24;
+const USERS_COUNT = 12;
+const APPLICATIONS_PER_AUTHOR = APPLICATIONS_COUNT / AUTHORS_COUNT;
+const RATINGS_PER_USER = 3;
+const FAVORITES_PER_USER = 5;
+const SEED_NUMBER = 42;
+
+const resetSchema = {
+  account,
+  application,
+  author,
+  ratings,
+  session,
+  user,
+  userFavorite,
+  verification,
+};
+
+const contentSeedSchema = { author, application };
+const userSeedSchema = { user, ratings };
+
+async function seedDatabase() {
   try {
-    logger.info('Starting database seed...');
+    logger.info('Starting full database seed...');
 
-    // Clear existing data (optional - comment out if you want to keep existing data)
-    logger.info('Clearing existing data...');
-    await db.delete(applications);
-    await db.delete(authors);
+    logger.info('Resetting existing data...');
+    await reset(db, resetSchema);
 
-    // Insert sample authors
-    logger.info('Inserting sample authors...');
-    const [author1, author2, author3] = await db
-      .insert(authors)
-      .values([
-        {
-          name: 'John Doe',
-          email: 'john@example.com',
-          description: 'Full-stack developer passionate about web technologies',
-          website: 'https://johndoe.dev',
-          logo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-        },
-        {
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          description: 'Frontend specialist with a love for React and TypeScript',
-          website: 'https://janesmith.com',
-          logo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane',
-        },
-        {
-          name: 'Bob Johnson',
-          email: 'bob@example.com',
-          description: 'Backend engineer focused on scalable systems',
-          website: 'https://bobjohnson.io',
-          logo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
-        },
-      ])
-      .returning();
+    if (!Number.isInteger(APPLICATIONS_PER_AUTHOR)) {
+      throw new Error('APPLICATIONS_COUNT must be evenly divisible by AUTHORS_COUNT.');
+    }
 
-    logger.info(`Inserted ${[author1, author2, author3].length} authors`);
+    logger.info('Generating content entities using drizzle-seed with relational seeding...');
+    await seed(db, contentSeedSchema, { seed: SEED_NUMBER }).refine((funcs) => ({
+      author: {
+        count: AUTHORS_COUNT,
+        columns: {
+          name: funcs.fullName(),
+          email: funcs.email(),
+          description: funcs.loremIpsum({ sentencesCount: 2 }),
+          website: funcs.string(),
+          logo: funcs.string(),
+        },
+        with: {
+          application: APPLICATIONS_PER_AUTHOR,
+        },
+      },
+      application: {
+        columns: {
+          title: funcs.companyName(),
+          slug: funcs.uuid(),
+          description: funcs.loremIpsum({ sentencesCount: 2 }),
+          url: funcs.string(),
+          tags: funcs.valuesFromArray({
+            values: ['web', 'mobile', 'api', 'ai', 'iot', 'design'],
+            arraySize: 3,
+          }),
+        },
+      },
+    }));
 
-    // Insert sample applications
-    logger.info('Inserting sample applications...');
-    const sampleApps = await db
-      .insert(applications)
-      .values([
-        {
-          title: 'Task Manager Pro',
-          slug: 'task-manager-pro',
-          authorId: author1.id,
-          description: 'A powerful task management application with real-time collaboration',
-          url: 'https://taskmanager.example.com',
-          previewImages: [
-            'https://picsum.photos/800/600?random=1',
-            'https://picsum.photos/800/600?random=2',
-          ],
-          tags: ['react', 'typescript', 'nodejs', 'postgresql'],
-        },
-        {
-          title: 'Weather Dashboard',
-          slug: 'weather-dashboard',
-          authorId: author2.id,
-          description: 'Beautiful weather forecasting app with interactive maps',
-          url: 'https://weather.example.com',
-          previewImages: ['https://picsum.photos/800/600?random=3'],
-          tags: ['nextjs', 'tailwind', 'api'],
-        },
-        {
-          title: 'E-commerce Platform',
-          slug: 'e-commerce-platform',
-          authorId: author1.id,
-          description: 'Full-featured online shopping platform with payment integration',
-          url: 'https://shop.example.com',
-          previewImages: [
-            'https://picsum.photos/800/600?random=4',
-            'https://picsum.photos/800/600?random=5',
-            'https://picsum.photos/800/600?random=6',
-          ],
-          tags: ['react', 'nodejs', 'stripe', 'mongodb'],
-        },
-        {
-          title: 'Blog CMS',
-          slug: 'blog-cms',
-          authorId: author3.id,
-          description: 'Content management system for bloggers and content creators',
-          url: 'https://blogcms.example.com',
-          previewImages: ['https://picsum.photos/800/600?random=7'],
-          tags: ['vue', 'express', 'mysql'],
-        },
-        {
-          title: 'Chat Application',
-          slug: 'chat-application',
-          authorId: author2.id,
-          description: 'Real-time messaging app with video call support',
-          url: 'https://chat.example.com',
-          previewImages: [
-            'https://picsum.photos/800/600?random=8',
-            'https://picsum.photos/800/600?random=9',
-          ],
-          tags: ['websocket', 'webrtc', 'typescript', 'react'],
-        },
-        {
-          title: 'Fitness Tracker',
-          slug: 'fitness-tracker',
-          authorId: author3.id,
-          description: 'Track your workouts, nutrition, and health goals',
-          url: 'https://fitness.example.com',
-          previewImages: ['https://picsum.photos/800/600?random=10'],
-          tags: ['mobile', 'health', 'charts'],
-        },
-        {
-          title: 'Recipe Finder',
-          slug: 'recipe-finder',
-          authorId: author1.id,
-          description: 'Discover and save your favorite recipes from around the world',
-          url: 'https://recipes.example.com',
-          previewImages: [
-            'https://picsum.photos/800/600?random=11',
-            'https://picsum.photos/800/600?random=12',
-          ],
-          tags: ['nextjs', 'api', 'food'],
-        },
-        {
-          title: 'Portfolio Generator',
-          slug: 'portfolio-generator',
-          authorId: author2.id,
-          description: 'Create stunning developer portfolios in minutes',
-          url: 'https://portfolio.example.com',
-          previewImages: ['https://picsum.photos/800/600?random=13'],
-          tags: ['react', 'design', 'templates'],
-        },
-        {
-          title: 'Analytics Dashboard',
-          slug: 'analytics-dashboard',
-          authorId: author3.id,
-          description: 'Business intelligence and data visualization platform',
-          url: 'https://analytics.example.com',
-          previewImages: [
-            'https://picsum.photos/800/600?random=14',
-            'https://picsum.photos/800/600?random=15',
-          ],
-          tags: ['d3js', 'charts', 'data', 'typescript'],
-        },
-        {
-          title: 'Music Player',
-          slug: 'music-player',
-          authorId: author1.id,
-          description: 'Beautiful music streaming application with playlist support',
-          url: 'https://music.example.com',
-          previewImages: ['https://picsum.photos/800/600?random=16'],
-          tags: ['audio', 'streaming', 'react', 'design'],
-        },
-      ])
-      .returning();
+    const seededApplications = await db.select({ id: application.id }).from(application);
+    const seededApplicationIds = seededApplications.map((seededApplication) => seededApplication.id);
 
-    logger.info(`Inserted ${sampleApps.length} applications`);
+    if (seededApplicationIds.length === 0) {
+      throw new Error('Missing seeded applications needed for related records.');
+    }
 
-    logger.info('✅ Database seeding completed successfully!');
-    logger.info(`Summary: ${[author1, author2, author3].length} authors, ${sampleApps.length} applications`);
+    logger.info('Generating users and related entities using drizzle-seed with relational seeding...');
+    await seed(db, userSeedSchema, { seed: SEED_NUMBER + 1 }).refine((funcs) => ({
+      user: {
+        count: USERS_COUNT,
+        columns: {
+          id: funcs.uuid(),
+          name: funcs.fullName(),
+          email: funcs.email(),
+        },
+        with: {
+          ratings: RATINGS_PER_USER,
+        },
+      },
+      ratings: {
+        columns: {
+          applicationId: funcs.valuesFromArray({ values: seededApplicationIds }),
+          score: funcs.valuesFromArray({ values: [1, 2, 3, 4, 5] }),
+          comment: funcs.loremIpsum({ sentencesCount: 1 }),
+          isAnonymous: funcs.boolean(),
+        },
+      },
+    }));
+
+    const seededUsers = await db.select({ id: user.id, email: user.email }).from(user);
+
+    if (FAVORITES_PER_USER > seededApplicationIds.length) {
+      throw new Error('FAVORITES_PER_USER cannot exceed the number of seeded applications.');
+    }
+
+    logger.info('Generating user favorites with unique application assignments per user...');
+    const cycledApplicationIds = [...seededApplicationIds, ...seededApplicationIds];
+    const favoriteRows = seededUsers.flatMap((seededUser, userIndex) => {
+      const startIndex = (userIndex * FAVORITES_PER_USER) % seededApplicationIds.length;
+      const selectedApplicationIds = cycledApplicationIds.slice(
+        startIndex,
+        startIndex + FAVORITES_PER_USER,
+      );
+
+      return selectedApplicationIds.map((applicationId) => ({
+        userId: seededUser.id,
+        applicationId,
+      }));
+    });
+
+    if (favoriteRows.length > 0) {
+      await db.insert(userFavorite).values(favoriteRows);
+    }
+
+    logger.info('Full database seeding completed successfully!');
+    logger.info(
+      `Summary: ${AUTHORS_COUNT} authors, ${APPLICATIONS_COUNT} applications, ${seededUsers.length} users, ${seededUsers.length * RATINGS_PER_USER} ratings, ${seededUsers.length * FAVORITES_PER_USER} favorites`,
+    );
 
     process.exit(0);
   } catch (error) {
-    logger.error('❌ Error seeding database:', error);
+    logger.error('Error seeding database:', error);
     process.exit(1);
   }
 }
 
-// Run the seed function
-seed();
+seedDatabase();

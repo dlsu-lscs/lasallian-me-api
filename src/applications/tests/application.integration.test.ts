@@ -9,6 +9,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { createTestDatabase } from '@/shared/config/test-database.js';
 import { PgliteDatabase } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
+import { seed } from 'drizzle-seed';
   
 describe("ApplicationService Integration Tests", () => {
     let service: ApplicationService;
@@ -18,12 +19,27 @@ describe("ApplicationService Integration Tests", () => {
 
     beforeAll(async () => {
         const testDb = await createTestDatabase();
-        db = testDb.db as unknown as PgliteDatabase;
+        db = testDb.db;
         client = testDb.client;
 
         service = new ApplicationService(db as unknown as NodePgDatabase);
-        const [createdAuthor] = await db.insert(author).values({name:"test-es", email: "test@gmail.com"}).returning();
-        testAuthorId = createdAuthor.id;
+
+        await seed(db, { author }, { seed: 42 }).refine((funcs) => ({
+            author: {
+                count: 1,
+                columns: {
+                    name: funcs.valuesFromArray({ values: ['test-es'] }),
+                    email: funcs.valuesFromArray({ values: ['test@gmail.com'] }),
+                },
+            },
+        }));
+
+        const [seededAuthor] = await db.select({ id: author.id }).from(author).where(eq(author.email, 'test@gmail.com'));
+        if (!seededAuthor) {
+            throw new Error('Failed to seed test author.');
+        }
+
+        testAuthorId = seededAuthor.id;
     });
 
     // Clean up test data after each test
