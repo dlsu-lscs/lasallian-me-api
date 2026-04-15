@@ -7,8 +7,8 @@ export const AuthorResponseSchema = z.object({
   description: z.string().nullable().openapi({ example: "A brief bio" }),
   website: z.string().nullable().openapi({ example: "https://example.com" }),
   logo: z.string().nullable().openapi({ example: "https://example.com/logo.png" }),
-  createdAt: z.date().openapi({ example: "YYYY-MM-DD" }),
-  updatedAt: z.date().openapi({ example: "YYYY-MM-DD" }),
+  createdAt: z.date().openapi({ example: "2025-01-01T00:00:00.000Z" }),
+  updatedAt: z.date().openapi({ example: "2025-01-01T00:00:00.000Z" }),
 }).openapi("AuthorResponse");
 
 export const AuthorsListResponseSchema = z.object({
