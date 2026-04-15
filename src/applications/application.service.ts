@@ -1,6 +1,6 @@
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
-import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, sql, getTableColumns } from 'drizzle-orm';
+import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, sql, getColumns } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
@@ -111,7 +111,7 @@ export default class ApplicationService implements IApplicationService {
         // Get paginated data and favorites count in one query to avoid N+1.
         const data = await this.db
             .select({
-                ...getTableColumns(application),
+                ...getColumns(application),
                 favoritesCount: sql<number>`count(${userFavorite.userId})::int`,
             })
             .from(application)
