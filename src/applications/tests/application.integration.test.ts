@@ -19,7 +19,7 @@ describe("ApplicationService Integration Tests", () => {
 
     beforeAll(async () => {
         const testDb = await createTestDatabase();
-        db = testDb.db as unknown as PgliteDatabase;
+        db = testDb.db;
         client = testDb.client;
 
         service = new ApplicationService(db as unknown as NodePgDatabase);

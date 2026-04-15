@@ -7,7 +7,7 @@ import { requireApiKey } from "@/shared/middleware/auth.middleware.js";
 
 const router = Router();
 
-const favoritesService = new FavoritesService(db as NodePgDatabase);
+const favoritesService = new FavoritesService(db);
 const favoritesController = new FavoritesController(favoritesService);
 
 router.get("/users/:userId", favoritesController.getUserFavorites);

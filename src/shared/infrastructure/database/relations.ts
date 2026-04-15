@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm/relations";
+import { defineRelations } from 'drizzle-orm';
 import {
   author,
   application,
@@ -7,63 +7,67 @@ import {
   userFavorite,
   session,
   account,
-} from "./schema.js";
+} from './schema.js';
 
-export const applicationsRelations = relations(application, ({one, many}) => ({
-	author: one(author, {
-		fields: [application.authorId],
-		references: [author.id]
+export const relations = defineRelations(
+	{
+		application,
+		author,
+		ratings,
+		userFavorite,
+		user,
+		session,
+		account,
+	},
+	(r) => ({
+		application: {
+			author: r.one.author({
+				from: r.application.authorId,
+				to: r.author.id,
+			}),
+			ratings: r.many.ratings(),
+			userFavorite: r.many.userFavorite(),
+		},
+		author: {
+			applications: r.many.application(),
+		},
+		ratings: {
+			user: r.one.user({
+				from: r.ratings.userId,
+				to: r.user.id,
+			}),
+			application: r.one.application({
+				from: r.ratings.applicationId,
+				to: r.application.id,
+			}),
+		},
+		userFavorite: {
+			user: r.one.user({
+				from: r.userFavorite.userId,
+				to: r.user.id,
+			}),
+			application: r.one.application({
+				from: r.userFavorite.applicationId,
+				to: r.application.id,
+			}),
+		},
+		user: {
+			sessions: r.many.session(),
+			accounts: r.many.account(),
+			ratings: r.many.ratings(),
+			userFavorite: r.many.userFavorite(),
+		},
+		session: {
+			user: r.one.user({
+				from: r.session.userId,
+				to: r.user.id,
+			}),
+		},
+		account: {
+			user: r.one.user({
+				from: r.account.userId,
+				to: r.user.id,
+			}),
+		},
 	}),
-	ratings: many(ratings),
-	userFavorite: many(userFavorite),
-}));
-
-export const authorsRelations = relations(author, ({many}) => ({
-	applications: many(application),
-}));
-
-export const ratingsRelations = relations(ratings, ({one}) => ({
-	user: one(user, {
-		fields: [ratings.userId],
-		references: [user.id]
-	}),
-	application: one(application, {
-		fields: [ratings.applicationId],
-		references: [application.id]
-	}),
-}));
-
-
-
-export const userFavoriteRelations = relations(userFavorite, ({one}) => ({
-	user: one(user, {
-		fields: [userFavorite.userId],
-		references: [user.id]
-	}),
-	application: one(application, {
-		fields: [userFavorite.applicationId],
-		references: [application.id]
-	}),
-}));
-
-export const userRelations = relations(user, ({ many }) => ({
-	sessions: many(session),
-	accounts: many(account),
-	ratings: many(ratings),
-	userFavorite: many(userFavorite),
-	
-  }));
-  
-  export const sessionRelations = relations(session, ({ one }) => ({
-	user: one(user, {
-	  fields: [session.userId],
-	  references: [user.id],
-	}),
-  }));
-  
-  export const accountRelations = relations(account, ({ one }) => ({
-	user: one(user, {
-	  fields: [account.userId],
-	  references: [user.id],
-	}),
-  }));
+);

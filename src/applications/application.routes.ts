@@ -3,11 +3,10 @@ import { ApplicationController } from './application.controller.js';
 import ApplicationService from "@/applications/application.service.js"
 import { requireApiKey } from '@/shared/middleware/auth.middleware.js';
 import { db } from '@/shared/config/database.js';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 const router = Router();
 
-const applicationService = new ApplicationService(db as NodePgDatabase);
+const applicationService = new ApplicationService(db);
 const applicationController = new ApplicationController(applicationService);
 
 /**
