@@ -133,20 +133,20 @@ export const ratings = pgTable("ratings", {
 	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
 ]);
 
-export const userFavorites = pgTable("user_favorites", {
+export const userFavorite = pgTable("user_favorite", {
 	userId: text("user_id").notNull(),
 	applicationId: integer("application_id").notNull(),
 }, (table) => [
-	index("user_favorites_application_id_idx").on(table.applicationId),
+	index("user_favorite_application_id_idx").on(table.applicationId),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],
-			name: "user_favorites_user_id_fkey"
+			name: "user_favorite_user_id_fkey"
 		}),
 	foreignKey({
 			columns: [table.applicationId],
 			foreignColumns: [application.id],
-			name: "user_favorites_application_id_fkey"
+			name: "user_favorite_application_id_fkey"
 		}),
-	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorites_pkey"}),
+	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorite_pkey"}),
 ]);

@@ -8,7 +8,7 @@ import {
   ratings,
   session,
   user,
-  userFavorites,
+  userFavorite,
   verification,
 } from '../src/shared/infrastructure/database/schema.js';
 import { logger } from '../src/shared/utils/logger.js';
@@ -28,12 +28,12 @@ const resetSchema = {
   ratings,
   session,
   user,
-  userFavorites,
+  userFavorite,
   verification,
 };
 
 const contentSeedSchema = { author, application };
-const userSeedSchema = { user, session, account, ratings, userFavorites };
+const userSeedSchema = { user, session, account, ratings, userFavorite };
 const verificationSeedSchema = { verification };
 
 async function seedDatabase() {
@@ -96,7 +96,7 @@ async function seedDatabase() {
           session: 1,
           account: 1,
           ratings: RATINGS_PER_USER,
-          userFavorites: FAVORITES_PER_USER,
+          userFavorite: FAVORITES_PER_USER,
         },
       },
       session: {
@@ -121,7 +121,7 @@ async function seedDatabase() {
           isAnonymous: funcs.boolean(),
         },
       },
-      userFavorites: {
+      userFavorite: {
         columns: {
           applicationId: funcs.valuesFromArray({ values: seededApplicationIds }),
         },

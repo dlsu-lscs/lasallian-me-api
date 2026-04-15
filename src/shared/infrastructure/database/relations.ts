@@ -4,7 +4,7 @@ import {
   application,
   user,
   ratings,
-  userFavorites,
+  userFavorite,
   session,
   account,
 } from "./schema.js";
@@ -15,7 +15,7 @@ export const applicationsRelations = relations(application, ({one, many}) => ({
 		references: [author.id]
 	}),
 	ratings: many(ratings),
-	userFavorites: many(userFavorites),
+	userFavorite: many(userFavorite),
 }));
 
 export const authorsRelations = relations(author, ({many}) => ({
@@ -35,13 +35,13 @@ export const ratingsRelations = relations(ratings, ({one}) => ({
 
 
 
-export const userFavoritesRelations = relations(userFavorites, ({one}) => ({
+export const userFavoriteRelations = relations(userFavorite, ({one}) => ({
 	user: one(user, {
-		fields: [userFavorites.userId],
+		fields: [userFavorite.userId],
 		references: [user.id]
 	}),
 	application: one(application, {
-		fields: [userFavorites.applicationId],
+		fields: [userFavorite.applicationId],
 		references: [application.id]
 	}),
 }));
@@ -50,7 +50,7 @@ export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	accounts: many(account),
 	ratings: many(ratings),
-	userFavorites: many(userFavorites),
+	userFavorite: many(userFavorite),
 	
   }));
   

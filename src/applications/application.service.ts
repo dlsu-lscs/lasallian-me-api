@@ -6,7 +6,7 @@ import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorites } from '@/shared/infrastructure/database/schema.js';
+import { userFavorite } from '@/shared/infrastructure/database/schema.js';
 import { author } from '@/authors/author.model.js';
 
 export type ApplicationListItem = SelectApplication & {
@@ -114,10 +114,10 @@ export default class ApplicationService implements IApplicationService {
         const data = await this.db
             .select({
                 ...getTableColumns(application),
-                favoritesCount: sql<number>`count(${userFavorites.userId})::int`,
+                favoritesCount: sql<number>`count(${userFavorite.userId})::int`,
             })
             .from(application)
-            .leftJoin(userFavorites, eq(application.id, userFavorites.applicationId))
+            .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
             .where(whereClause)
             .groupBy(application.id)
             .orderBy(orderByClause)

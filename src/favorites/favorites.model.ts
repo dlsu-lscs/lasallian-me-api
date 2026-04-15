@@ -1,6 +1,6 @@
-import { userFavorites } from "@/shared/infrastructure/database/schema.js";
+import { userFavorite } from "@/shared/infrastructure/database/schema.js";
 
-export {userFavorites} 
+export {userFavorite} 
 
-export type SelectFavorite = typeof userFavorites.$inferSelect
-export type InsertFavorite = typeof userFavorites.$inferInsert
+export type SelectFavorite = typeof userFavorite.$inferSelect
+export type InsertFavorite = typeof userFavorite.$inferInsert
