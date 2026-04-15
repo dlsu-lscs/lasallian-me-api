@@ -40,7 +40,7 @@ export default class FavoritesController {
 
     logger.debug("Fetching user favorites", { userId: parsed.data.userId });
 
-    const applicationIds = await this.favoritesService.getUserFavorites(parsed.data.userId);
+    const applicationIds = await this.favoritesService.getUserFavorite(parsed.data.userId);
 
     const response: UserFavoritesResponse = {
       userId: parsed.data.userId,

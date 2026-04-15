@@ -13,7 +13,7 @@ export type FavoritesList = {
 
 export interface IFavoritesService{
     createFavorite(favorite: InsertFavorite): Promise<void>
-    getuserFavorite(userId: string): Promise<number[]>
+    getUserFavorite(userId: string): Promise<number[]>
     getApplicationFavorites(applicationId: number): Promise<string[]>
     getApplicationFavoritesCount(applicationId: number): Promise<number>
     deleteFavorite(userId: string, applicationId: number): Promise<SelectFavorite>
@@ -74,7 +74,7 @@ export default class FavoritesService {
      * @param userId - User ID
      * @returns List of application IDs favorited by the user
      */
-    getuserFavorite = async (userId: string): Promise<number[]> => {
+    getUserFavorite = async (userId: string): Promise<number[]> => {
 
         const favorites = await this.db
             .select({ applicationId: userFavorite.applicationId })

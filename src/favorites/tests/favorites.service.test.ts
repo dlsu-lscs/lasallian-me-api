@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { createTestDatabase } from "@/shared/config/test-database.js";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { seed } from "drizzle-seed";
-import { application, author, user, userFavorites } from "@/shared/infrastructure/database/schema.js";
+import { application, author, user, userFavorite } from "../favorites.model.js";
 
 
 describe("FavoritesService", () => {
@@ -69,7 +69,7 @@ describe("FavoritesService", () => {
     });
 
     afterEach(async () => {
-        await db.delete(userFavorites);
+        await db.delete(userFavorite);
     });
 
     afterAll(async () => {
@@ -83,7 +83,7 @@ describe("FavoritesService", () => {
                 applicationId: firstApplicationId
             });
 
-            const favorites = await service.getUserFavorites(firstUserId);
+            const favorites = await service.getUserFavorite(firstUserId);
             expect(favorites).toEqual([firstApplicationId]);
         });
 
@@ -105,7 +105,7 @@ describe("FavoritesService", () => {
 
     describe("getUserFavorites", () => {
         it("should return empty array if no favorites", async () => {
-            const favorites = await service.getUserFavorites(firstUserId);
+            const favorites = await service.getUserFavorite(firstUserId);
             expect(favorites).toEqual([]);
         });
 
@@ -119,7 +119,7 @@ describe("FavoritesService", () => {
                 applicationId: secondApplicationId
             });
 
-            const favorites = await service.getUserFavorites(firstUserId);
+            const favorites = await service.getUserFavorite(firstUserId);
 
             expect(favorites).toHaveLength(2);
             expect(favorites).toEqual(expect.arrayContaining([
@@ -189,7 +189,7 @@ describe("FavoritesService", () => {
                 applicationId: firstApplicationId
             });
 
-            const favorites = await service.getUserFavorites(firstUserId);
+            const favorites = await service.getUserFavorite(firstUserId);
             expect(favorites).toEqual([]);
         });
 

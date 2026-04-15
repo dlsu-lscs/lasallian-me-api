@@ -9,7 +9,7 @@ import { PgliteDatabase } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import { author } from '@/authors/author.model.js';
 import { eq } from 'drizzle-orm';
-import { userFavorites } from '@/favorites/favorites.model.js';
+import { userFavorite } from '@/favorites/favorites.model.js';
 import { user } from '@/users/user.model.js';
 import { seed } from 'drizzle-seed';
 
@@ -54,7 +54,7 @@ describe("ApplicationService", () => {
     });
 
     afterEach(async () => {
-        await db.delete(userFavorites);
+        await db.delete(userFavorite);
         await db.delete(application);
     });
 
@@ -106,7 +106,7 @@ describe("ApplicationService", () => {
             const firstApp = await createTestApp({ slug: 'favorite-count-app-1' });
             const secondApp = await createTestApp({ slug: 'favorite-count-app-2' });
 
-            await db.insert(userFavorites).values({
+            await db.insert(userFavorite).values({
                 userId: testUserId,
                 applicationId: firstApp.id,
             });
