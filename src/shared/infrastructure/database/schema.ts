@@ -127,7 +127,7 @@ export const ratings = pgTable("ratings", {
 			columns: [table.applicationId],
 			foreignColumns: [application.id],
 			name: "ratings_application_id_fkey"
-		}),
+		}).onDelete("cascade"),
 	index("ratings_user_id_idx").on(table.userId),
 	index("ratings_application_id_idx").on(table.applicationId),
 	check("ratings_score_check", sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`),
@@ -142,11 +142,11 @@ export const userFavorite = pgTable("user_favorite", {
 			columns: [table.userId],
 			foreignColumns: [user.id],
 			name: "user_favorite_user_id_fkey"
-		}),
+		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.applicationId],
 			foreignColumns: [application.id],
 			name: "user_favorite_application_id_fkey"
-		}),
+		}).onDelete("cascade"),
 	primaryKey({ columns: [table.userId, table.applicationId], name: "user_favorite_pkey"}),
 ]);

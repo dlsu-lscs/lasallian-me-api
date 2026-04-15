@@ -18,7 +18,7 @@ const APPLICATIONS_COUNT = 24;
 const USERS_COUNT = 12;
 const APPLICATIONS_PER_AUTHOR = APPLICATIONS_COUNT / AUTHORS_COUNT;
 const RATINGS_PER_USER = 3;
-const FAVORITES_PER_USER = 1;
+const FAVORITES_PER_USER = 5;
 const SEED_NUMBER = 42;
 
 const resetSchema = {
@@ -33,8 +33,7 @@ const resetSchema = {
 };
 
 const contentSeedSchema = { author, application };
-const userSeedSchema = { user, session, account, ratings, userFavorite };
-const verificationSeedSchema = { verification };
+const userSeedSchema = { user, ratings };
 
 async function seedDatabase() {
   try {
@@ -93,24 +92,7 @@ async function seedDatabase() {
           email: funcs.email(),
         },
         with: {
-          session: 1,
-          account: 1,
           ratings: RATINGS_PER_USER,
-          userFavorite: FAVORITES_PER_USER,
-        },
-      },
-      session: {
-        columns: {
-          id: funcs.uuid(),
-          token: funcs.uuid(),
-          expiresAt: funcs.timestamp(),
-        },
-      },
-      account: {
-        columns: {
-          id: funcs.uuid(),
-          accountId: funcs.uuid(),
-          providerId: funcs.valuesFromArray({ values: ['google', 'github'] }),
         },
       },
       ratings: {
@@ -121,35 +103,36 @@ async function seedDatabase() {
           isAnonymous: funcs.boolean(),
         },
       },
-      userFavorite: {
-        columns: {
-          applicationId: funcs.valuesFromArray({ values: seededApplicationIds }),
-        },
-      },
     }));
 
     const seededUsers = await db.select({ id: user.id, email: user.email }).from(user);
-    const verificationIdentifiers = seededUsers
-      .slice(0, Math.min(10, seededUsers.length))
-      .map((seededUser) => seededUser.email);
 
-    if (verificationIdentifiers.length > 0) {
-      await seed(db, verificationSeedSchema, { seed: SEED_NUMBER + 2 }).refine((funcs) => ({
-        verification: {
-          count: verificationIdentifiers.length,
-          columns: {
-            id: funcs.uuid(),
-            identifier: funcs.valuesFromArray({ values: verificationIdentifiers }),
-            value: funcs.uuid(),
-            expiresAt: funcs.timestamp(),
-          },
-        },
+    if (FAVORITES_PER_USER > seededApplicationIds.length) {
+      throw new Error('FAVORITES_PER_USER cannot exceed the number of seeded applications.');
+    }
+
+    logger.info('Generating user favorites with unique application assignments per user...');
+    const cycledApplicationIds = [...seededApplicationIds, ...seededApplicationIds];
+    const favoriteRows = seededUsers.flatMap((seededUser, userIndex) => {
+      const startIndex = (userIndex * FAVORITES_PER_USER) % seededApplicationIds.length;
+      const selectedApplicationIds = cycledApplicationIds.slice(
+        startIndex,
+        startIndex + FAVORITES_PER_USER,
+      );
+
+      return selectedApplicationIds.map((applicationId) => ({
+        userId: seededUser.id,
+        applicationId,
       }));
+    });
+
+    if (favoriteRows.length > 0) {
+      await db.insert(userFavorite).values(favoriteRows);
     }
 
     logger.info('Full database seeding completed successfully!');
     logger.info(
-      `Summary: ${AUTHORS_COUNT} authors, ${APPLICATIONS_COUNT} applications, ${seededUsers.length} users, ${seededUsers.length} sessions, ${seededUsers.length} accounts, ${verificationIdentifiers.length} verifications, ${seededUsers.length * RATINGS_PER_USER} ratings, ${seededUsers.length * FAVORITES_PER_USER} favorites`,
+      `Summary: ${AUTHORS_COUNT} authors, ${APPLICATIONS_COUNT} applications, ${seededUsers.length} users, ${seededUsers.length * RATINGS_PER_USER} ratings, ${seededUsers.length * FAVORITES_PER_USER} favorites`,
     );
 
     process.exit(0);
