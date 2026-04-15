@@ -1,7 +1,7 @@
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, count, eq } from "drizzle-orm";
 import { HttpError } from "@/shared/middleware/error.middleware.js";
-import { InsertFavorite, SelectFavorite, userFavorites } from "./favorites.model.js";
+import { InsertFavorite, SelectFavorite, userFavorite } from "./favorites.model.js";
 
 /**
  * Service result type for favorites list
@@ -13,7 +13,7 @@ export type FavoritesList = {
 
 export interface IFavoritesService{
     createFavorite(favorite: InsertFavorite): Promise<void>
-    getUserFavorites(userId: string): Promise<number[]>
+    getuserFavorite(userId: string): Promise<number[]>
     getApplicationFavorites(applicationId: number): Promise<string[]>
     getApplicationFavoritesCount(applicationId: number): Promise<number>
     deleteFavorite(userId: string, applicationId: number): Promise<SelectFavorite>
@@ -41,10 +41,10 @@ export default class FavoritesService {
     ): Promise<SelectFavorite | undefined> => {
         const [favorite] = await this.db
             .select()
-            .from(userFavorites)
+            .from(userFavorite)
             .where(and(
-                eq(userFavorites.userId, userId),
-                eq(userFavorites.applicationId, applicationId)
+                eq(userFavorite.userId, userId),
+                eq(userFavorite.applicationId, applicationId)
             ))
             .limit(1)
 
@@ -65,7 +65,7 @@ export default class FavoritesService {
         }
 
         await this.db
-            .insert(userFavorites)
+            .insert(userFavorite)
             .values(favorite)
     }
     
@@ -74,12 +74,12 @@ export default class FavoritesService {
      * @param userId - User ID
      * @returns List of application IDs favorited by the user
      */
-    getUserFavorites = async (userId: string): Promise<number[]> => {
+    getuserFavorite = async (userId: string): Promise<number[]> => {
 
         const favorites = await this.db
-            .select({ applicationId: userFavorites.applicationId })
-            .from(userFavorites)
-            .where(eq(userFavorites.userId, userId))
+            .select({ applicationId: userFavorite.applicationId })
+            .from(userFavorite)
+            .where(eq(userFavorite.userId, userId))
     
         return favorites.length > 0 ? favorites.map(fav => fav.applicationId) : []
     }
@@ -91,9 +91,9 @@ export default class FavoritesService {
      */
     getApplicationFavorites = async (applicationId: number): Promise<string[]> => {
         const favorites = await this.db
-            .select({ userId: userFavorites.userId })
-            .from(userFavorites)
-            .where(eq(userFavorites.applicationId, applicationId))
+            .select({ userId: userFavorite.userId })
+            .from(userFavorite)
+            .where(eq(userFavorite.applicationId, applicationId))
 
         return favorites.length > 0 ? favorites.map((favorite) => favorite.userId) : []
     }
@@ -106,8 +106,8 @@ export default class FavoritesService {
     getApplicationFavoritesCount = async (applicationId: number): Promise<number> => {
         const [{ value: favoritesCount }] = await this.db
             .select({ value: count() })
-            .from(userFavorites)
-            .where(eq(userFavorites.applicationId, applicationId))
+            .from(userFavorite)
+            .where(eq(userFavorite.applicationId, applicationId))
 
         return favoritesCount
     }
@@ -127,10 +127,10 @@ export default class FavoritesService {
         }
 
         const [deletedFavorite] = await this.db
-            .delete(userFavorites)
+            .delete(userFavorite)
             .where(and(
-                eq(userFavorites.userId, userId),
-                eq(userFavorites.applicationId, applicationId)
+                eq(userFavorite.userId, userId),
+                eq(userFavorite.applicationId, applicationId)
             ))
             .returning()
 

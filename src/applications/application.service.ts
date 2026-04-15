@@ -1,4 +1,3 @@
-import { application } from './application.model.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 import type { ApplicationsListFilters } from './dto/index.js';
 import { eq, SQL, gte, lte, between, and, or, ilike, asc, desc, count, arrayOverlaps, sql, getTableColumns } from 'drizzle-orm';
@@ -6,8 +5,7 @@ import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { IApplicationService } from './application.controller.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorite } from '@/shared/infrastructure/database/schema.js';
-import { author } from '@/authors/author.model.js';
+import { userFavorite, application, author } from './application.model.js';
 
 export type ApplicationListItem = SelectApplication & {
     favoritesCount: number;
