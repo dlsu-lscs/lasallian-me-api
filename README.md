@@ -68,6 +68,19 @@ Interactive Swagger UI and the OpenAPI JSON are available under `/api-docs`.
 
 Better Auth is configured with the OpenAPI plugin.
 
+Routes (mounted under `/api/auth`):
+
+- Better Auth OpenAPI reference UI: `/api/auth/reference`
+- Better Auth OpenAPI schema JSON: `/api/auth/open-api/generate-schema`
+
+#### Testing Protected Endpoints In Swagger
+
+1. Sign in first using your normal auth flow (for example through the client at `CLIENT_URL`) so a Better Auth session cookie is created.
+2. Open `/api-docs` in the same browser session.
+3. Call protected endpoints (such as favorites and ratings write operations).
+
+If you are not signed in (or the cookie is missing), those endpoints will return `401 Unauthorized`.
+
 ### Authors
 
 #### API Key (for protected endpoints)
