@@ -1,7 +1,7 @@
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, count, eq } from "drizzle-orm";
 import { HttpError } from "@/shared/middleware/error.middleware.js";
-import { InsertFavorite, SelectFavorite, userFavorite } from "./favorites.model.js";
+import { application, InsertFavorite, SelectFavorite, user, userFavorite } from "./favorites.model.js";
 
 /**
  * Service result type for favorites list
@@ -26,6 +26,30 @@ export interface IFavoritesService{
 export default class FavoritesService {
     constructor(private readonly db: NodePgDatabase){
 
+    }
+
+    private ensureUserExists = async (userId: string): Promise<void> => {
+        const [existingUser] = await this.db
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.id, userId))
+            .limit(1);
+
+        if (!existingUser) {
+            throw new HttpError(404, "User not found", "NOT_FOUND");
+        }
+    }
+
+    private ensureApplicationExists = async (applicationId: number): Promise<void> => {
+        const [existingApplication] = await this.db
+            .select({ id: application.id })
+            .from(application)
+            .where(eq(application.id, applicationId))
+            .limit(1);
+
+        if (!existingApplication) {
+            throw new HttpError(404, "Application not found", "NOT_FOUND");
+        }
     }
 
     /**
@@ -58,6 +82,11 @@ export default class FavoritesService {
      * @throws HttpError 409 if favorite relation already exists
      */
     createFavorite = async (favorite: InsertFavorite): Promise<void> => {
+        await Promise.all([
+            this.ensureUserExists(favorite.userId),
+            this.ensureApplicationExists(favorite.applicationId),
+        ]);
+
         const existing = await this.getFavorite(favorite.userId, favorite.applicationId)
 
         if (existing) {

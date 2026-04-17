@@ -32,5 +32,21 @@ export const requireAuth = async(req: Request, res: Response, next: NextFunction
     throw new HttpError(401, "Unauthorized", "UNAUTHORIZED")
   }
 
+  const sessionUserId = session.user?.id
+
+  if (!sessionUserId) {
+    throw new HttpError(401, "Unauthorized", "UNAUTHORIZED")
+  }
+
+  res.locals.authUserId = sessionUserId
+
   next()
+}
+
+export const getSession = async(req: Request) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  })
+
+  return session
 }

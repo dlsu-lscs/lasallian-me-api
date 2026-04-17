@@ -101,6 +101,26 @@ describe("FavoritesService", () => {
                 code: "DUPLICATE_FAVORITE"
             });
         });
+
+        it("should throw 404 when user does not exist", async () => {
+            await expect(service.createFavorite({
+                userId: "missing-user-id",
+                applicationId: firstApplicationId
+            })).rejects.toMatchObject({
+                statusCode: 404,
+                code: "NOT_FOUND"
+            });
+        });
+
+        it("should throw 404 when application does not exist", async () => {
+            await expect(service.createFavorite({
+                userId: firstUserId,
+                applicationId: 999999
+            })).rejects.toMatchObject({
+                statusCode: 404,
+                code: "NOT_FOUND"
+            });
+        });
     });
 
     describe("getUserFavorites", () => {

@@ -14,7 +14,11 @@ import {
 export default class FavoritesController {
   constructor(private favoritesService: IFavoritesService) {}
 
+  private getAuthenticatedUserId = (res: Response): string => res.locals.authUserId as string;
+
   createFavorite = async (req: Request, res: Response): Promise<void> => {
+    const userId = this.getAuthenticatedUserId(res);
+
     const parsed = CreateFavoriteRequestSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -22,11 +26,14 @@ export default class FavoritesController {
       throw parsed.error;
     }
 
-    logger.debug("Creating favorite", parsed.data);
+    logger.debug("Creating favorite", { userId, applicationId: parsed.data.applicationId });
 
-    await this.favoritesService.createFavorite(parsed.data);
+    await this.favoritesService.createFavorite({
+      userId,
+      applicationId: parsed.data.applicationId,
+    });
 
-    logger.info("Favorite created successfully", parsed.data);
+    logger.info("Favorite created successfully", { userId, applicationId: parsed.data.applicationId });
     res.status(204).send();
   };
 
@@ -105,6 +112,8 @@ export default class FavoritesController {
   };
 
   deleteFavorite = async (req: Request, res: Response): Promise<void> => {
+    const userId = this.getAuthenticatedUserId(res);
+
     const parsed = DeleteFavoriteParamsSchema.safeParse(req.params);
 
     if (!parsed.success) {
@@ -112,14 +121,14 @@ export default class FavoritesController {
       throw parsed.error;
     }
 
-    logger.debug("Deleting favorite", parsed.data);
+    logger.debug("Deleting favorite", { userId, applicationId: parsed.data.applicationId });
 
     const favorite = await this.favoritesService.deleteFavorite(
-      parsed.data.userId,
+      userId,
       parsed.data.applicationId
     );
 
-    logger.info("Favorite deleted successfully", parsed.data);
+    logger.info("Favorite deleted successfully", { userId, applicationId: parsed.data.applicationId });
     res.status(200).json(favorite);
   };
 }
