@@ -6,29 +6,104 @@ It is set up with the **Domain-Driven (Vertical Slicing)** architecture.
 
 ## Getting Started
 
-All dependencies are installed during the project setup. To start the development server, run:
+To start the development server:
+
+1. **Create your `.env` file** from the template:
+
+   **macOS/Linux (bash)**
 
 ```bash
-npm run dev
+cp .env.example .env
 ```
 
-The server will start with hot-reloading, meaning it will automatically restart when you save a file.
+**Windows (PowerShell)**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then update at least your database connection string:
+
+```env
+DATABASE_URL=postgres://postgres:password@localhost:5432/database_name
+```
+
+2. **Run database migrations**:
+
+   ```bash
+   pnpm db:migrate
+   ```
+
+3. **Start the development server**:
+   ```bash
+   pnpm dev
+   ```
 
 ## Available Scripts
 
--   `npm start`: Starts the production server (builds the project first).
--   `npm run dev`: Starts the development server with hot-reloading.
--   `npm run build`: Compiles the TypeScript code to JavaScript in the `dist` directory.
--   `npm run lint`: Lints the codebase for potential errors.
--   `npm run format`: Formats the code using Prettier.
+- `pnpm dev`: Starts the development server with hot-reloading.
+- `pnpm start`: Starts the production server (builds the project first).
+- `pnpm build`: Compiles the TypeScript code to JavaScript.
+- `pnpm lint`: Lints the codebase for potential errors.
+- `pnpm lint:fix`: Lints and auto-fixes issues where possible.
+- `pnpm format`: Formats the code using Prettier.
+- `pnpm test`: Runs tests once.
+- `pnpm test:watch`: Runs tests in watch mode.
+- `pnpm test:coverage`: Runs tests with coverage.
+- `pnpm db:generate`: Generates migration files from schema changes.
+- `pnpm db:migrate`: Applies migrations to the database.
+- `pnpm db:push`: Pushes schema changes directly to the database (dev only).
+- `pnpm db:studio`: Opens Drizzle Studio for database management.
+- `pnpm db:seed`: Seeds the database.
+
+## API Documentation
+
+Default development base URL: `http://localhost:8000`
+
+### Swagger / OpenAPI
+
+Interactive Swagger UI and the OpenAPI JSON are available under `/api-docs`.
+
+### Authentication
+
+Better Auth is configured with the OpenAPI plugin.
+
+Routes (mounted under `/api/auth`):
+
+- Better Auth OpenAPI reference UI: `/api/auth/reference`
+- Better Auth OpenAPI schema JSON: `/api/auth/open-api/generate-schema`
+
+#### Testing Protected Endpoints In Swagger
+
+1. Sign in first using your normal auth flow (for example through the client at `CLIENT_URL`) so a Better Auth session cookie is created.
+2. Open `/api-docs` in the same browser session.
+3. Call protected endpoints (such as favorites and ratings write operations).
+
+If you are not signed in (or the cookie is missing), those endpoints will return `401 Unauthorized`.
+
+### Authors
+
+#### API Key (for protected endpoints)
+
+Creating and deleting authors requires an API key via the `x-api-key` header.
+
+Add this to your `.env` file:
+
+```env
+API_SECRET_KEY=your-api-key
+```
+
+```http
+x-api-key: <API_SECRET_KEY>
+```
 
 ## Tech Stack
 
--   **Runtime**: Node.js
--   **Framework**: Express.js
--   **Language**: TypeScript
--   **Logger**: Winston
--   **Linter**: ESLint
--   **Formatter**: Prettier
--   **Testing**: Vitest
--   **Development Runner**: `tsx`
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Logger**: Winston
+- **Linter**: ESLint
+- **Formatter**: Prettier
+- **Testing**: Vitest
+- **Development Runner**: `tsx`

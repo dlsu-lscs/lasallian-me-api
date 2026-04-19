@@ -3,7 +3,9 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -13,9 +15,8 @@
   },
   "include": [
     "src/**/*"
-  ],
+, "server.ts"  ],
   "exclude": [
-    "node_modules",
-    "**/*.test.ts"
+    "node_modules"
   ]
 }
