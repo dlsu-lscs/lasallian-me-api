@@ -12,7 +12,7 @@ export const application = pgTable("application", {
 	tags: varchar({ length: 50 }).array(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
+		.defaultNow() 
 		.$onUpdate(() => /* @__PURE__ */ new Date())
 		.notNull(),
 }, (table) => [
@@ -111,13 +111,15 @@ export const user = pgTable("user", {
   });
   
 export const ratings = pgTable("ratings", {
-	id: serial().primaryKey().notNull(),
-	userId: text("user_id"),
-	applicationId: integer("application_id"),
+	userId: text("user_id").notNull(),
+	applicationId: integer("application_id").notNull(),
 	comment: varchar({ length: 255 }),
 	isAnonymous: boolean("is_anonymous").default(false),
 	score: doublePrecision().default(0).notNull(),
 }, (table) => [
+	primaryKey({
+		columns: [table.userId, table.applicationId], name: "ratings_pkey"
+	}),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],
