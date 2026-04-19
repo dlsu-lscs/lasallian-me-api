@@ -33,6 +33,22 @@ registry.registerComponent('securitySchemes', 'ApiKeyAuth', {
   description: 'API key for protected routes',
 });
 
+// Register session cookie security scheme (used by authenticated user routes)
+registry.registerComponent('securitySchemes', 'SessionAuth', {
+  type: 'apiKey',
+  in: 'cookie',
+  name: 'better-auth.session_token',
+  description: 'Better Auth session cookie for authenticated user routes',
+});
+
+// Register Better Auth OAuth state cookie security scheme
+registry.registerComponent('securitySchemes', 'StateAuth', {
+  type: 'apiKey',
+  in: 'cookie',
+  name: 'better-auth.state',
+  description: 'Better Auth OAuth state cookie',
+});
+
 
 /**
  * Generate OpenAPI document

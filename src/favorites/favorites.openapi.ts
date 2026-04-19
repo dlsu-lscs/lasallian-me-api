@@ -10,6 +10,8 @@ import {
   UserFavoritesResponseSchema,
 } from "./dto/index.js";
 
+const authenticatedUserSecurity: Array<Record<string, string[]>> = [{ SessionAuth: [], StateAuth: [] }];
+
 registry.registerPath({
   method: "get",
   path: "/api/favorites/users/{userId}",
@@ -126,8 +128,8 @@ registry.registerPath({
   path: "/api/favorites",
   description: "Create a favorite relation between a user and an application",
   summary: "Create favorite",
+  security: authenticatedUserSecurity,
   tags: ["Favorites"],
-  security: [{ ApiKeyAuth: [] }],
   request: {
     body: {
       content: {
@@ -140,6 +142,14 @@ registry.registerPath({
   responses: {
     204: {
       description: "Successfully created favorite",
+    },
+    401: {
+      description: "Unauthorized - UNAUTHORIZED",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
     },
     400: {
       description: "Invalid request body - VALIDATION_ERROR",
@@ -170,10 +180,10 @@ registry.registerPath({
 
 registry.registerPath({
   method: "delete",
-  path: "/api/favorites/{userId}/{applicationId}",
-  description: "Delete a favorite relation by user and application IDs",
+  path: "/api/favorites/{applicationId}",
+  description: "Delete a favorite relation for the authenticated user and application ID",
   summary: "Delete favorite",
-  security: [{ ApiKeyAuth: [] }],
+  security: authenticatedUserSecurity,
   tags: ["Favorites"],
   request: {
     params: DeleteFavoriteParamsSchema,
@@ -184,6 +194,14 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: FavoriteResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized - UNAUTHORIZED",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
         },
       },
     },
