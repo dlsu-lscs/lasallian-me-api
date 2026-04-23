@@ -1,0 +1,12 @@
+.git
+.gitignore
+
+node_modules
+
+dist
+
+.vscode
+
+tests
+
+*.log
