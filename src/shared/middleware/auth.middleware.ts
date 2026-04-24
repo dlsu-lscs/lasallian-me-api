@@ -1,7 +1,7 @@
 import cors from "cors";
 import {Request, Response, NextFunction} from "express"
 import { HttpError } from "@/shared/middleware/error.middleware.js"
-import { auth } from '@/auth/auth.config.js';
+import { auth } from '@/shared/auth/auth.config.js';
 import { fromNodeHeaders } from "better-auth/node";
 
 // Export CORS middleware configuration
