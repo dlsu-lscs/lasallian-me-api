@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
-import app from '../app.js';
+import app from '../../app.js';
 
 describe('Server Port Tests', () => {
   let server: http.Server;

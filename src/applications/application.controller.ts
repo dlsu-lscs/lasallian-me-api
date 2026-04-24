@@ -28,14 +28,7 @@ export class ApplicationController {
    * @route GET /api/applications
    */
   getPaginatedApplications = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationsListQuerySchema.safeParse(req.query);
-    
-    if (!parsed.success) {
-      logger.warn('Invalid query parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    const { limit, page, ...filters } = parsed.data;
+    const { limit, page, ...filters } = ApplicationsListQuerySchema.parse(req.query);
 
     logger.debug('Fetching applications', { limit, page, filters });
 
@@ -67,16 +60,11 @@ export class ApplicationController {
    * @route GET /api/applications/:slug
    */
   getApplicationBySlug = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationSlugParamsSchema.safeParse(req.params);
+    const { slug } = ApplicationSlugParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+    logger.debug('Fetching application by slug', { slug });
 
-    logger.debug('Fetching application by slug', { slug: parsed.data.slug });
-
-    const application = await this.applicationService.getApplicationBySlug(parsed.data.slug);
+    const application = await this.applicationService.getApplicationBySlug(slug);
 
     logger.info('Application retrieved successfully', { applicationId: application.id, slug: application.slug });
     res.status(200).json(application);
@@ -86,16 +74,11 @@ export class ApplicationController {
    * @route POST request for creating a single application
    */
   createApplication = async(req: Request, res: Response): Promise<void> => {
-    const parsed = CreateApplicationRequestSchema.safeParse(req.body)
-    
-    if(!parsed.success){
-      logger.warn('Invalid request body', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+    const body = CreateApplicationRequestSchema.parse(req.body);
 
-    logger.debug('Creating application', { slug: parsed.data.slug });
+    logger.debug('Creating application', { slug: body.slug });
 
-    const application = await this.applicationService.createApplication(parsed.data)
+    const application = await this.applicationService.createApplication(body)
 
     logger.info('Application created successfully', { applicationId: application.id, slug: application.slug });
     res.status(201).json(application)
@@ -106,25 +89,12 @@ export class ApplicationController {
    * @route PATCH /api/applications/:id
    */
   patchApplicationById = async (req: Request, res: Response): Promise<void> => {
-    const paramsResult = ApplicationIdParamsSchema.safeParse(req.params);
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = PatchApplicationRequestSchema.parse(req.body);
 
-    if (!paramsResult.success) {
-      logger.warn('Invalid path parameters', { errors: paramsResult.error.issues });
-      throw paramsResult.error;
-    }
+    logger.debug('Patching application', { id, updates: body });
 
-    const bodyResult = PatchApplicationRequestSchema.safeParse(req.body);
-
-    if (!bodyResult.success) {
-      logger.warn('Invalid request body', { errors: bodyResult.error.issues });
-      throw bodyResult.error;
-    }
-
-    const { id } = paramsResult.data;
-
-    logger.debug('Patching application', { id, updates: bodyResult.data });
-
-    const application = await this.applicationService.patchApplicationById(id, bodyResult.data);
+    const application = await this.applicationService.patchApplicationById(id, body);
 
     logger.info('Application patched successfully', { applicationId: application.id, slug: application.slug });
     res.status(200).json(application);
@@ -135,14 +105,7 @@ export class ApplicationController {
    * @route DELETE /api/applications/:id
    */
   deleteApplicationById = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationIdParamsSchema.safeParse(req.params);
-
-    if (!parsed.success) {
-      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    const { id } = parsed.data;
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
 
     logger.debug('Deleting application', { id });
 

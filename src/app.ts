@@ -8,7 +8,7 @@ import "./authors/author.openapi.js";
 import "./favorites/favorites.openapi.js";
 import "./ratings/ratings.openapi.js";
 
-import authRoutes from "./auth/auth.routes.js";
+import authRoutes from "./shared/auth/auth.routes.js";
 import userRoutes from "./users/user.routes.js";
 import applicationRoutes from "./applications/application.routes.js";
 import authorRoutes from "@/authors/author.routes.js"
