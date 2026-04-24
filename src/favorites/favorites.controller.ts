@@ -1,6 +1,6 @@
-import type { Request, Response } from "express";
-import { logger } from "@/shared/utils/logger.js";
-import type { IFavoritesService } from "./favorites.service.js";
+import type { Request, Response } from 'express';
+import { logger } from '@/shared/utils/logger.js';
+import type { IFavoritesService } from './favorites.service.js';
 import {
   ApplicationFavoritesParamsSchema,
   CreateFavoriteRequestSchema,
@@ -9,7 +9,7 @@ import {
   type ApplicationFavoritesCountResponse,
   type ApplicationFavoritesResponse,
   type UserFavoritesResponse,
-} from "./dto/index.js";
+} from './dto/index.js';
 
 export default class FavoritesController {
   constructor(private favoritesService: IFavoritesService) {}
@@ -21,21 +21,21 @@ export default class FavoritesController {
 
     const body = CreateFavoriteRequestSchema.parse(req.body);
 
-    logger.debug("Creating favorite", { userId, applicationId: body.applicationId });
+    logger.debug('Creating favorite', { userId, applicationId: body.applicationId });
 
     await this.favoritesService.createFavorite({
       userId,
       applicationId: body.applicationId,
     });
 
-    logger.info("Favorite created successfully", { userId, applicationId: body.applicationId });
+    logger.info('Favorite created successfully', { userId, applicationId: body.applicationId });
     res.status(204).send();
   };
 
   getUserFavorites = async (req: Request, res: Response): Promise<void> => {
     const { userId } = UserFavoritesParamsSchema.parse(req.params);
 
-    logger.debug("Fetching user favorites", { userId });
+    logger.debug('Fetching user favorites', { userId });
 
     const applicationIds = await this.favoritesService.getUserFavorite(userId);
 
@@ -44,7 +44,7 @@ export default class FavoritesController {
       applicationIds,
     };
 
-    logger.info("User favorites retrieved successfully", {
+    logger.info('User favorites retrieved successfully', {
       userId,
       count: applicationIds.length,
     });
@@ -54,7 +54,7 @@ export default class FavoritesController {
   getApplicationFavorites = async (req: Request, res: Response): Promise<void> => {
     const { applicationId } = ApplicationFavoritesParamsSchema.parse(req.params);
 
-    logger.debug("Fetching application favorites", {
+    logger.debug('Fetching application favorites', {
       applicationId,
     });
 
@@ -66,7 +66,7 @@ export default class FavoritesController {
       total: userIds.length,
     };
 
-    logger.info("Application favorites retrieved successfully", {
+    logger.info('Application favorites retrieved successfully', {
       applicationId,
       count: userIds.length,
     });
@@ -76,7 +76,7 @@ export default class FavoritesController {
   getApplicationFavoritesCount = async (req: Request, res: Response): Promise<void> => {
     const { applicationId } = ApplicationFavoritesParamsSchema.parse(req.params);
 
-    logger.debug("Fetching application favorites count", {
+    logger.debug('Fetching application favorites count', {
       applicationId,
     });
 
@@ -87,7 +87,7 @@ export default class FavoritesController {
       count,
     };
 
-    logger.info("Application favorites count retrieved successfully", response);
+    logger.info('Application favorites count retrieved successfully', response);
     res.status(200).json(response);
   };
 
@@ -96,14 +96,11 @@ export default class FavoritesController {
 
     const { applicationId } = DeleteFavoriteParamsSchema.parse(req.params);
 
-    logger.debug("Deleting favorite", { userId, applicationId });
+    logger.debug('Deleting favorite', { userId, applicationId });
 
-    const favorite = await this.favoritesService.deleteFavorite(
-      userId,
-      applicationId
-    );
+    const favorite = await this.favoritesService.deleteFavorite(userId, applicationId);
 
-    logger.info("Favorite deleted successfully", { userId, applicationId });
+    logger.info('Favorite deleted successfully', { userId, applicationId });
     res.status(200).json(favorite);
   };
 }

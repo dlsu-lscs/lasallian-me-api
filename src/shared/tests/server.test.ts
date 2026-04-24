@@ -44,7 +44,7 @@ describe('Server Port Tests', () => {
         resolve(res.statusCode !== undefined);
         res.resume(); // Consume response data
       });
-      
+
       testClient.on('error', () => {
         resolve(false);
       });
@@ -66,16 +66,21 @@ describe('Server Port Tests', () => {
   });
 
   it('should handle multiple concurrent connections', async () => {
-    const requests = Array(5).fill(null).map(() => 
-      new Promise<boolean>((resolve) => {
-        http.get(`http://localhost:${PORT}/api/auth`, (res) => {
-          resolve(res.statusCode !== undefined);
-          res.resume();
-        }).on('error', () => resolve(false));
-      })
-    );
+    const requests = Array(5)
+      .fill(null)
+      .map(
+        () =>
+          new Promise<boolean>((resolve) => {
+            http
+              .get(`http://localhost:${PORT}/api/auth`, (res) => {
+                resolve(res.statusCode !== undefined);
+                res.resume();
+              })
+              .on('error', () => resolve(false));
+          }),
+      );
 
     const results = await Promise.all(requests);
-    expect(results.every(result => result === true)).toBe(true);
+    expect(results.every((result) => result === true)).toBe(true);
   });
 });

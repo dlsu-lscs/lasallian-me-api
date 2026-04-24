@@ -11,9 +11,12 @@ import { logger } from '@/shared/utils/logger.js';
 import type { ApplicationsListResponse, ApplicationsListFilters } from './dto/index.js';
 import type { SelectApplication, InsertApplication } from './application.model.js';
 
-
 export interface IApplicationService {
-  getPaginatedApplications(limit: number, page: number, filters?: ApplicationsListFilters): Promise<ApplicationsList>;
+  getPaginatedApplications(
+    limit: number,
+    page: number,
+    filters?: ApplicationsListFilters,
+  ): Promise<ApplicationsList>;
   getApplicationBySlug(slug: string): Promise<SelectApplication>;
   createApplication(app: InsertApplication): Promise<SelectApplication>;
   patchApplicationById(id: number, updates: Partial<InsertApplication>): Promise<SelectApplication>;
@@ -32,13 +35,17 @@ export class ApplicationController {
 
     logger.debug('Fetching applications', { limit, page, filters });
 
-    const { data, total } = await this.applicationService.getPaginatedApplications(limit, page, filters);
+    const { data, total } = await this.applicationService.getPaginatedApplications(
+      limit,
+      page,
+      filters,
+    );
 
-    logger.info('Applications retrieved successfully', { 
-      count: data.length, 
+    logger.info('Applications retrieved successfully', {
+      count: data.length,
       total,
-      page, 
-      limit 
+      page,
+      limit,
     });
 
     const response: ApplicationsListResponse = {
@@ -48,12 +55,12 @@ export class ApplicationController {
         limit,
         count: data.length,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
 
     res.status(200).json(response);
-  }
+  };
 
   /**
    * Handles GET requests for a single application by slug
@@ -66,23 +73,29 @@ export class ApplicationController {
 
     const application = await this.applicationService.getApplicationBySlug(slug);
 
-    logger.info('Application retrieved successfully', { applicationId: application.id, slug: application.slug });
+    logger.info('Application retrieved successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
     res.status(200).json(application);
-  }
+  };
 
   /**
    * @route POST request for creating a single application
    */
-  createApplication = async(req: Request, res: Response): Promise<void> => {
+  createApplication = async (req: Request, res: Response): Promise<void> => {
     const body = CreateApplicationRequestSchema.parse(req.body);
 
     logger.debug('Creating application', { slug: body.slug });
 
-    const application = await this.applicationService.createApplication(body)
+    const application = await this.applicationService.createApplication(body);
 
-    logger.info('Application created successfully', { applicationId: application.id, slug: application.slug });
-    res.status(201).json(application)
-  }
+    logger.info('Application created successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
+    res.status(201).json(application);
+  };
 
   /**
    * Handles PATCH requests for updating an application
@@ -96,9 +109,12 @@ export class ApplicationController {
 
     const application = await this.applicationService.patchApplicationById(id, body);
 
-    logger.info('Application patched successfully', { applicationId: application.id, slug: application.slug });
+    logger.info('Application patched successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
     res.status(200).json(application);
-  }
+  };
 
   /**
    * Handles DELETE requests for removing an application
@@ -111,7 +127,10 @@ export class ApplicationController {
 
     const application = await this.applicationService.deleteApplicationById(id);
 
-    logger.info('Application deleted successfully', { applicationId: application.id, slug: application.slug });
+    logger.info('Application deleted successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
     res.status(200).json(application);
-  }
+  };
 }
