@@ -1,11 +1,21 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "a043da77-a8ee-4cf2-80b9-7344347199a7",
+  "id": "befeea79-7772-44af-b08f-cc083215b4fb",
   "prevIds": [
-    "5a8331b4-b61d-41d8-8fcc-ec3709cb73eb"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
+    {
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "name": "application_approval_status",
+      "entityType": "enums",
+      "schema": "public"
+    },
     {
       "isRlsEnabled": false,
       "name": "account",
@@ -15,12 +25,6 @@
     {
       "isRlsEnabled": false,
       "name": "application",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
-      "name": "author",
       "entityType": "tables",
       "schema": "public"
     },
@@ -263,14 +267,14 @@
       "table": "application"
     },
     {
-      "type": "integer",
+      "type": "text",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "author_id",
+      "name": "user_id",
       "entityType": "columns",
       "schema": "public",
       "table": "application"
@@ -328,6 +332,32 @@
       "table": "application"
     },
     {
+      "type": "application_approval_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'PENDING'",
+      "generated": null,
+      "identity": null,
+      "name": "is_approved",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "application"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rejection_reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "application"
+    },
+    {
       "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
@@ -352,110 +382,6 @@
       "entityType": "columns",
       "schema": "public",
       "table": "application"
-    },
-    {
-      "type": "serial",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "varchar(150)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "name",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "varchar(150)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "email",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "description",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "website",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "logo",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "author"
     },
     {
       "type": "text",
@@ -692,6 +618,32 @@
       "table": "user"
     },
     {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "website",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "logo",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
       "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
@@ -874,7 +826,7 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "author_id",
+          "value": "user_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -886,7 +838,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "application_author_id_idx",
+      "name": "application_user_id_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "application"
@@ -950,6 +902,27 @@
       "method": "btree",
       "concurrently": false,
       "name": "application_title_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "application"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "is_approved",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "application_is_approved_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "application"
@@ -1058,16 +1031,16 @@
     {
       "nameExplicit": true,
       "columns": [
-        "author_id"
+        "user_id"
       ],
       "schemaTo": "public",
-      "tableTo": "author",
+      "tableTo": "user",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "name": "applications_author_id_authors_id_fk",
+      "name": "applications_user_id_users_id_fk",
       "entityType": "fks",
       "schema": "public",
       "table": "application"
@@ -1204,16 +1177,6 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "author_pkey",
-      "schema": "public",
-      "table": "author",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
       "name": "session_pkey",
       "schema": "public",
       "table": "session",
@@ -1238,17 +1201,6 @@
       "schema": "public",
       "table": "verification",
       "entityType": "pks"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        "email"
-      ],
-      "nullsNotDistinct": false,
-      "name": "authors_email_key",
-      "entityType": "uniques",
-      "schema": "public",
-      "table": "author"
     },
     {
       "nameExplicit": false,

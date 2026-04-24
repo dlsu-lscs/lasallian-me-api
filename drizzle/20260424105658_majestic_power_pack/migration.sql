@@ -1,3 +1,4 @@
+CREATE TYPE "application_approval_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY,
 	"account_id" text NOT NULL,
@@ -18,33 +19,24 @@ CREATE TABLE "application" (
 	"id" serial PRIMARY KEY,
 	"title" varchar(255) NOT NULL,
 	"slug" varchar(255) NOT NULL UNIQUE,
-	"author_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"description" text,
 	"url" text,
 	"preview_images" text[],
 	"tags" varchar(50)[],
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "author" (
-	"id" serial PRIMARY KEY,
-	"name" varchar(150) NOT NULL,
-	"email" varchar(150) NOT NULL CONSTRAINT "authors_email_key" UNIQUE,
-	"description" text,
-	"website" text,
-	"logo" text,
+	"is_approved" "application_approval_status" DEFAULT 'PENDING'::"application_approval_status" NOT NULL,
+	"rejection_reason" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "ratings" (
-	"id" serial PRIMARY KEY,
 	"user_id" text,
 	"application_id" integer,
 	"comment" varchar(255),
 	"is_anonymous" boolean DEFAULT false,
 	"score" double precision DEFAULT 0 NOT NULL,
+	CONSTRAINT "ratings_pkey" PRIMARY KEY("user_id","application_id"),
 	CONSTRAINT "ratings_score_check" CHECK ((score >= (0.0)::double precision) AND (score <= (5.0)::double precision))
 );
 --> statement-breakpoint
@@ -65,6 +57,8 @@ CREATE TABLE "user" (
 	"email" text NOT NULL UNIQUE,
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
+	"website" text,
+	"logo" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -86,16 +80,17 @@ CREATE TABLE "verification" (
 --> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" ("user_id");--> statement-breakpoint
 CREATE INDEX "account_provider_account_idx" ON "account" ("provider_id","account_id");--> statement-breakpoint
-CREATE INDEX "application_author_id_idx" ON "application" ("author_id");--> statement-breakpoint
+CREATE INDEX "application_user_id_idx" ON "application" ("user_id");--> statement-breakpoint
 CREATE INDEX "application_created_at_idx" ON "application" ("created_at");--> statement-breakpoint
 CREATE INDEX "application_updated_at_idx" ON "application" ("updated_at");--> statement-breakpoint
 CREATE INDEX "application_title_idx" ON "application" ("title");--> statement-breakpoint
+CREATE INDEX "application_is_approved_idx" ON "application" ("is_approved");--> statement-breakpoint
 CREATE INDEX "ratings_user_id_idx" ON "ratings" ("user_id");--> statement-breakpoint
 CREATE INDEX "ratings_application_id_idx" ON "ratings" ("application_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" ("user_id");--> statement-breakpoint
 CREATE INDEX "user_favorite_application_id_idx" ON "user_favorite" ("application_id");--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "application" ADD CONSTRAINT "applications_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "author"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "application" ADD CONSTRAINT "applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id");--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "application"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
