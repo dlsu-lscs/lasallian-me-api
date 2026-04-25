@@ -2,10 +2,14 @@ import type { Request, Response } from 'express';
 import { logger } from '@/shared/utils/logger.js';
 import type { IFavoritesService } from './favorites.service.js';
 import {
+  ApplicationFavoritesCountResponseSchema,
   ApplicationFavoritesParamsSchema,
+  ApplicationFavoritesResponseSchema,
   CreateFavoriteRequestSchema,
   DeleteFavoriteParamsSchema,
+  FavoriteResponseSchema,
   UserFavoritesParamsSchema,
+  UserFavoritesResponseSchema,
   type ApplicationFavoritesCountResponse,
   type ApplicationFavoritesResponse,
   type UserFavoritesResponse,
@@ -48,7 +52,9 @@ export default class FavoritesController {
       userId,
       count: applicationIds.length,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = UserFavoritesResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   getApplicationFavorites = async (req: Request, res: Response): Promise<void> => {
@@ -70,7 +76,9 @@ export default class FavoritesController {
       applicationId,
       count: userIds.length,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = ApplicationFavoritesResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   getApplicationFavoritesCount = async (req: Request, res: Response): Promise<void> => {
@@ -88,7 +96,9 @@ export default class FavoritesController {
     };
 
     logger.info('Application favorites count retrieved successfully', response);
-    res.status(200).json(response);
+
+    const validatedResponse = ApplicationFavoritesCountResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   deleteFavorite = async (req: Request, res: Response): Promise<void> => {
@@ -101,6 +111,8 @@ export default class FavoritesController {
     const favorite = await this.favoritesService.deleteFavorite(userId, applicationId);
 
     logger.info('Favorite deleted successfully', { userId, applicationId });
-    res.status(200).json(favorite);
+
+    const validatedResponse = FavoriteResponseSchema.parse(favorite);
+    res.status(200).json(validatedResponse);
   };
 }

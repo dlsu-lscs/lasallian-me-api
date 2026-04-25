@@ -1,4 +1,8 @@
-import { OpenAPIRegistry, OpenApiGeneratorV3, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import {
+  OpenAPIRegistry,
+  OpenApiGeneratorV3,
+  extendZodWithOpenApi,
+} from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 extendZodWithOpenApi(z);
@@ -10,18 +14,19 @@ export const registry = new OpenAPIRegistry();
 /**
  * Register common components (error responses, etc.)
  */
-export const ErrorResponseSchema = z.object({
-  error: z.object({
-    message: z.string().openapi({ example: 'An error occurred' }),
-    code: z.string().optional().openapi({ example: 'ERROR_CODE' }),
-    details: z.any().optional(),
-  }),
-}).openapi('ErrorResponse');
+export const ErrorResponseSchema = z
+  .object({
+    error: z.object({
+      message: z.string().openapi({ example: 'An error occurred' }),
+      code: z.string().optional().openapi({ example: 'ERROR_CODE' }),
+      details: z.any().optional(),
+    }),
+  })
+  .openapi('ErrorResponse');
 
 registry.register('ErrorResponse', ErrorResponseSchema);
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
-
 
 /**
  * Generate OpenAPI document

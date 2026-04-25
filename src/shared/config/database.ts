@@ -5,10 +5,9 @@ import { logger } from '@/shared/utils/logger.js';
 import { Pool } from 'pg';
 import { relations } from '../infrastructure/database/relations.js';
 
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-})
+});
 const db = drizzle({ client: pool, relations });
 
 try {
@@ -19,5 +18,4 @@ try {
   throw error;
 }
 
-
-export { db, pool};
+export { db, pool };

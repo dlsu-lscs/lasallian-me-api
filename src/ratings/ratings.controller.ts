@@ -3,8 +3,10 @@ import { logger } from '@/shared/utils/logger.js';
 import type { ApplicationRatingsResponse, RatingResponse } from './dto/index.js';
 import {
   ApplicationRatingsParamsSchema,
+  ApplicationRatingsResponseSchema,
   CreateRatingRequestSchema,
   PatchRatingRequestSchema,
+  RatingResponseSchema,
 } from './dto/index.js';
 import type { IRatingsService } from './ratings.service.js';
 
@@ -32,7 +34,9 @@ export default class RatingsController {
       total: response.total,
       averageScore: response.averageScore,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = ApplicationRatingsResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   createRating = async (req: Request, res: Response): Promise<void> => {
@@ -56,7 +60,9 @@ export default class RatingsController {
       applicationId: response.applicationId,
       score: response.score,
     });
-    res.status(201).json(response);
+
+    const validatedResponse = RatingResponseSchema.parse(response);
+    res.status(201).json(validatedResponse);
   };
 
   patchRating = async (req: Request, res: Response): Promise<void> => {
@@ -80,7 +86,9 @@ export default class RatingsController {
       applicationId: response.applicationId,
       score: response.score,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = RatingResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   deleteRating = async (req: Request, res: Response): Promise<void> => {
@@ -94,7 +102,12 @@ export default class RatingsController {
 
     const response: RatingResponse = deleted;
 
-    logger.info('Rating deleted successfully', { slug: params.slug, applicationId: response.applicationId });
-    res.status(200).json(response);
+    logger.info('Rating deleted successfully', {
+      slug: params.slug,
+      applicationId: response.applicationId,
+    });
+
+    const validatedResponse = RatingResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 }

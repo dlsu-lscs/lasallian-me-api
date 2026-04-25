@@ -1,5 +1,5 @@
-import { z } from "@/shared/config/openapi.js";
-import "@/shared/config/openapi.js";
+import { z } from '@/shared/config/openapi.js';
+import '@/shared/config/openapi.js';
 
 export const CreateRatingRequestSchema = z
   .object({
@@ -10,9 +10,9 @@ export const CreateRatingRequestSchema = z
       .max(255)
       .optional()
       .nullable()
-      .openapi({ example: "Great app for events!" }),
+      .openapi({ example: 'Great app for events!' }),
     isAnonymous: z.boolean().openapi({ example: false }),
   })
-  .openapi("CreateRatingRequest");
+  .openapi('CreateRatingRequest');
 
 export type CreateRatingRequest = z.infer<typeof CreateRatingRequestSchema>;
