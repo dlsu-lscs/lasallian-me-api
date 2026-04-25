@@ -4,14 +4,13 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { relations } from '@/shared/infrastructure/database/relations.js';
 
 export const createTestDatabase = async () => {
-    const client = new PGlite();
-    const db = drizzle({ client, relations });
+  const client = new PGlite();
+  const db = drizzle({ client, relations });
 
-    // Apply migrations
-    await migrate(db, { migrationsFolder: "drizzle" });
+  await migrate(db, { migrationsFolder: 'drizzle' });
 
-    return {
-        db,
-        client,
-    };
+  return {
+    db,
+    client,
+  };
 };

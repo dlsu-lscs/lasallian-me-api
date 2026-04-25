@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { ApplicationController } from './application.controller.js';
-import ApplicationService from "@/applications/application.service.js"
-import { requireApiKey } from '@/shared/middleware/auth.middleware.js';
+import ApplicationService from '@/applications/application.service.js';
+import { requireAuth, requireRole } from '@/shared/middleware/auth.middleware.js';
 import { db } from '@/shared/config/database.js';
 
 const router = Router();
@@ -28,20 +28,39 @@ router.get('/:slug', applicationController.getApplicationBySlug);
  * @description Create an application
  * @access Private
  */
-router.post('/', requireApiKey, applicationController.createApplication);
+router.post('/', requireAuth, applicationController.createApplication);
 
 /**
  * @route PATCH /api/applications/:id
  * @description Update an application by ID
  * @access Private
  */
-router.patch('/:id', requireApiKey, applicationController.patchApplicationById);
+router.patch('/:id', requireAuth, applicationController.patchApplicationById);
 
 /**
  * @route DELETE /api/applications/:id
  * @description Delete an application by ID
  * @access Private
  */
-router.delete('/:id', requireApiKey, applicationController.deleteApplicationById);
+router.delete('/:id', requireAuth, applicationController.deleteApplicationById);
+
+/**
+ * @route GET /api/applications/admin
+ * @description List applications in moderation queue (Admin only)
+ * @access Private (Admin only)
+ */
+router.get('/admin', requireAuth, requireRole('admin'), applicationController.getAdminApplications);
+
+/**
+ * @route PATCH /api/applications/admin/:id/review
+ * @description Approve or reject an application by ID
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/admin/:id/review',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.reviewAdminApplicationById,
+);
 
 export default router;

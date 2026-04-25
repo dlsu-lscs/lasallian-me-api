@@ -1,5 +1,5 @@
-import { z } from "@/shared/config/openapi.js";
-import "@/shared/config/openapi.js";
+import { z } from '@/shared/config/openapi.js';
+import '@/shared/config/openapi.js';
 
 export const PatchRatingRequestSchema = z
   .object({
@@ -10,17 +10,17 @@ export const PatchRatingRequestSchema = z
       .max(255)
       .optional()
       .nullable()
-      .openapi({ example: "Updated review after more usage." }),
+      .openapi({ example: 'Updated review after more usage.' }),
     isAnonymous: z.boolean().optional().openapi({ example: true }),
   })
   .refine(
     (data) =>
       data.score !== undefined || data.comment !== undefined || data.isAnonymous !== undefined,
     {
-      message: "At least one updatable field must be provided",
-      path: ["body"],
+      message: 'At least one updatable field must be provided',
+      path: ['body'],
     },
   )
-  .openapi("PatchRatingRequest");
+  .openapi('PatchRatingRequest');
 
 export type PatchRatingRequest = z.infer<typeof PatchRatingRequestSchema>;

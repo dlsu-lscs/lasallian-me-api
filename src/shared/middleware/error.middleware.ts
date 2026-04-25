@@ -10,7 +10,7 @@ export class HttpError extends Error {
     public statusCode: number,
     message: string,
     public code: string = 'ERROR',
-    public details?: unknown
+    public details?: unknown,
   ) {
     super(message);
     this.name = 'HttpError';
@@ -25,16 +25,16 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void => {
   // Log the error details
-  logger.error('Request Error', { 
-    error: err.message, 
+  logger.error('Request Error', {
+    error: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method,
     ip: req.ip,
-    requestId: req.headers['x-request-id']
+    requestId: req.headers['x-request-id'],
   });
 
   // Handle Custom HTTP Errors
@@ -43,8 +43,8 @@ export const errorHandler = (
       error: {
         message: err.message,
         code: err.code,
-        ...(err.details ? { details: err.details } : {})
-      }
+        ...(err.details ? { details: err.details } : {}),
+      },
     });
     return;
   }
@@ -55,8 +55,8 @@ export const errorHandler = (
       error: {
         message: 'Validation Error',
         code: 'VALIDATION_ERROR',
-        details: z.prettifyError(err)
-      }
+        details: z.prettifyError(err),
+      },
     });
     return;
   }
@@ -66,8 +66,8 @@ export const errorHandler = (
     res.status(400).json({
       error: {
         message: 'Invalid JSON payload',
-        code: 'INVALID_JSON'
-      }
+        code: 'INVALID_JSON',
+      },
     });
     return;
   }
@@ -78,7 +78,7 @@ export const errorHandler = (
     error: {
       message: isDev ? err.message : 'Internal server error',
       code: 'INTERNAL_ERROR',
-      ...(isDev && { stack: err.stack })
-    }
+      ...(isDev && { stack: err.stack }),
+    },
   });
 };
