@@ -10,20 +10,11 @@ export const corsMiddleware = cors({
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 });
 
-export const requireApiKey = (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.headers['x-api-key'];
-
-  if (!apiKey || apiKey !== process.env.API_SECRET_KEY) {
-    throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
-  }
-  next();
-};
-
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await getSession(req)
+  const session = await getSession(req);
 
   if (!session) {
     throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
