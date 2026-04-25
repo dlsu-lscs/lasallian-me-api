@@ -23,9 +23,7 @@ export const requireApiKey = (req: Request, res: Response, next: NextFunction) =
 };
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await auth.api.getSession({
-    headers: fromNodeHeaders(req.headers),
-  });
+  const session = await getSession(req)
 
   if (!session) {
     throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
@@ -37,7 +35,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
   }
 
-  const sessionUserRole = (session.user as { role?: string } | undefined)?.role;
+  const sessionUserRole = session.user?.role;
 
   if (!sessionUserRole) {
     throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');

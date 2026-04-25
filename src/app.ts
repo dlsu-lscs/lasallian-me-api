@@ -8,7 +8,6 @@ import './favorites/favorites.openapi.js';
 import './ratings/ratings.openapi.js';
 
 import authRoutes from './shared/auth/auth.routes.js';
-import userRoutes from './users/user.routes.js';
 import applicationRoutes from './applications/application.routes.js';
 import favoritesRoutes from '@/favorites/favorites.routes.js';
 import ratingsRoutes from '@/ratings/ratings.routes.js';
@@ -22,7 +21,6 @@ app.use(corsMiddleware); // Apply CORS middleware
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api', ratingsRoutes);
