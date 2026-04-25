@@ -1,12 +1,15 @@
 import { registry, ErrorResponseSchema } from '@/shared/config/openapi.js';
-import { 
-  ApplicationsListQuerySchema, 
-  ApplicationSlugParamsSchema, 
-  ApplicationResponseSchema, 
+import {
+  ApplicationsListQuerySchema,
+  AdminApplicationsListQuerySchema,
+  ApplicationSlugParamsSchema,
+  ApplicationResponseSchema,
+  ApplicationListItemResponseSchema,
   CreateApplicationRequestSchema,
   ApplicationIdParamsSchema,
   PatchApplicationRequestSchema,
-  ApplicationsListResponseSchema
+  ReviewApplicationRequestSchema,
+  ApplicationsListResponseSchema,
 } from './dto/index.js';
 
 /**
@@ -66,7 +69,7 @@ registry.registerPath({
       description: 'Successfully retrieved application',
       content: {
         'application/json': {
-          schema: ApplicationResponseSchema,
+          schema: ApplicationListItemResponseSchema,
         },
       },
     },
@@ -98,14 +101,71 @@ registry.registerPath({
 });
 
 /**
+ * Register the GET /api/applications/admin endpoint
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/applications/admin',
+  description: 'Get a paginated list of applications in the moderation queue (Admin only)',
+  summary: 'List moderation queue applications',
+  security: [{ SessionAuth: [] }],
+  tags: ['Applications'],
+  request: {
+    query: AdminApplicationsListQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Successfully retrieved moderation queue applications',
+      content: {
+        'application/json': {
+          schema: ApplicationsListResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid query parameters - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden - FORBIDDEN',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
  * Register the POST /api/applications
  */
 registry.registerPath({
   method: 'post',
   path: '/api/applications',
-  description: 'Create application, api key protected',
+  description: 'Create application as the authenticated user',
   summary: 'Create application',
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ SessionAuth: [] }],
   tags: ['Applications'],
   request: {
     body: {
@@ -127,6 +187,14 @@ registry.registerPath({
     },
     400: {
       description: 'Invalid body request - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -158,9 +226,9 @@ registry.registerPath({
 registry.registerPath({
   method: 'patch',
   path: '/api/applications/{id}',
-  description: 'Partially update an application by ID, api key protected',
+  description: 'Partially update your own application by ID',
   summary: 'Update application',
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ SessionAuth: [] }],
   tags: ['Applications'],
   request: {
     params: ApplicationIdParamsSchema,
@@ -189,6 +257,22 @@ registry.registerPath({
         },
       },
     },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden - FORBIDDEN',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
     404: {
       description: 'Application not found - NOT_FOUND',
       content: {
@@ -205,6 +289,95 @@ registry.registerPath({
         },
       },
     },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Register the PATCH /api/applications/admin/:id/review endpoint
+ */
+registry.registerPath({
+  method: 'patch',
+  path: '/api/applications/admin/{id}/review',
+  description:
+    'Review application status by ID, including removing approved applications (Admin only)',
+  summary: 'Review application',
+  security: [{ SessionAuth: [] }],
+  tags: ['Applications'],
+  request: {
+    params: ApplicationIdParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: ReviewApplicationRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Successfully reviewed application',
+      content: {
+        'application/json': {
+          schema: ApplicationResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid request data - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden - FORBIDDEN',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Application not found - NOT_FOUND',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: 'Invalid application state - INVALID_APPLICATION_STATE',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
   },
 });
 
@@ -214,9 +387,9 @@ registry.registerPath({
 registry.registerPath({
   method: 'delete',
   path: '/api/applications/{id}',
-  description: 'Delete an application by ID, api key protected',
+  description: 'Delete your own application by ID',
   summary: 'Delete application',
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ SessionAuth: [] }],
   tags: ['Applications'],
   request: {
     params: ApplicationIdParamsSchema,
@@ -230,8 +403,32 @@ registry.registerPath({
         },
       },
     },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden - FORBIDDEN',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
     404: {
       description: 'Application not found - NOT_FOUND',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,

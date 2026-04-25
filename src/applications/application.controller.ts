@@ -1,27 +1,26 @@
 import type { Request, Response } from 'express';
-import type { ApplicationsList } from './application.service.js';
+import type { IApplicationService } from './application.service.js';
 import {
   ApplicationsListQuerySchema,
   ApplicationSlugParamsSchema,
   ApplicationIdParamsSchema,
   CreateApplicationRequestSchema,
   PatchApplicationRequestSchema,
+  ReviewApplicationRequestSchema,
+  ApplicationListItemResponseSchema,
+  ApplicationsListResponseSchema,
+  ApplicationResponseSchema,
 } from './dto/index.js';
+import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
-import type { ApplicationsListResponse, ApplicationsListFilters } from './dto/index.js';
-import type { SelectApplication, InsertApplication } from './application.model.js';
+import { HttpError } from '@/shared/middleware/error.middleware.js';
+import type { InsertApplication } from './application.model.js';
 
-export interface IApplicationService {
-  getPaginatedApplications(
-    limit: number,
-    page: number,
-    filters?: ApplicationsListFilters,
-  ): Promise<ApplicationsList>;
-  getApplicationBySlug(slug: string): Promise<SelectApplication>;
-  createApplication(app: InsertApplication): Promise<SelectApplication>;
-  patchApplicationById(id: number, updates: Partial<InsertApplication>): Promise<SelectApplication>;
-  deleteApplicationById(id: number): Promise<SelectApplication>;
-}
+export type CreateApplicationInput = Pick<
+  InsertApplication,
+  'title' | 'slug' | 'description' | 'url' | 'previewImages' | 'tags'
+>;
+export type PatchApplicationInput = Partial<CreateApplicationInput>;
 
 export class ApplicationController {
   constructor(private applicationService: IApplicationService) {}
@@ -48,7 +47,7 @@ export class ApplicationController {
       limit,
     });
 
-    const response: ApplicationsListResponse = {
+    const response = {
       data,
       meta: {
         page,
@@ -59,7 +58,45 @@ export class ApplicationController {
       },
     };
 
-    res.status(200).json(response);
+    const parsed = ApplicationsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
+  };
+
+  /**
+   * Handles GET requests for applications in moderation queue (Admin only)
+   * @route GET /api/applications/admin
+   */
+  getAdminApplications = async (req: Request, res: Response): Promise<void> => {
+    const { limit, page, ...filters } = AdminApplicationsListQuerySchema.parse(req.query);
+
+    logger.debug('Fetching admin applications', { limit, page, filters });
+
+    const { data, total } = await this.applicationService.getAdminApplications(
+      limit,
+      page,
+      filters,
+    );
+
+    logger.info('Admin applications retrieved successfully', {
+      count: data.length,
+      total,
+      page,
+      limit,
+    });
+
+    const response = {
+      data,
+      meta: {
+        page,
+        limit,
+        count: data.length,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+
+    const parsed = ApplicationsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
   };
 
   /**
@@ -77,7 +114,9 @@ export class ApplicationController {
       applicationId: application.id,
       slug: application.slug,
     });
-    res.status(200).json(application);
+
+    const parsed = ApplicationListItemResponseSchema.parse(application);
+    res.status(200).json(parsed);
   };
 
   /**
@@ -85,16 +124,19 @@ export class ApplicationController {
    */
   createApplication = async (req: Request, res: Response): Promise<void> => {
     const body = CreateApplicationRequestSchema.parse(req.body);
+    const authUserId = this.getAuthUserId(res);
 
     logger.debug('Creating application', { slug: body.slug });
 
-    const application = await this.applicationService.createApplication(body);
+    const application = await this.applicationService.createApplication(body, authUserId);
 
     logger.info('Application created successfully', {
       applicationId: application.id,
       slug: application.slug,
     });
-    res.status(201).json(application);
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(201).json(parsed);
   };
 
   /**
@@ -104,16 +146,19 @@ export class ApplicationController {
   patchApplicationById = async (req: Request, res: Response): Promise<void> => {
     const { id } = ApplicationIdParamsSchema.parse(req.params);
     const body = PatchApplicationRequestSchema.parse(req.body);
+    const authUserId = this.getAuthUserId(res);
 
     logger.debug('Patching application', { id, updates: body });
 
-    const application = await this.applicationService.patchApplicationById(id, body);
+    const application = await this.applicationService.patchApplicationById(id, body, authUserId);
 
     logger.info('Application patched successfully', {
       applicationId: application.id,
       slug: application.slug,
     });
-    res.status(200).json(application);
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
   };
 
   /**
@@ -122,15 +167,49 @@ export class ApplicationController {
    */
   deleteApplicationById = async (req: Request, res: Response): Promise<void> => {
     const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const authUserId = this.getAuthUserId(res);
 
     logger.debug('Deleting application', { id });
 
-    const application = await this.applicationService.deleteApplicationById(id);
+    const application = await this.applicationService.deleteApplicationById(id, authUserId);
 
     logger.info('Application deleted successfully', {
       applicationId: application.id,
       slug: application.slug,
     });
-    res.status(200).json(application);
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
   };
+
+  /**
+   * Handles PATCH requests for admin review (approve/reject) of an application
+   * @route PATCH /api/applications/admin/:id/review
+   */
+  reviewAdminApplicationById = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = ReviewApplicationRequestSchema.parse(req.body);
+
+    logger.debug('Reviewing application', { id, decision: body.isApproved });
+
+    const application = await this.applicationService.reviewAdminApplicationById(id, body);
+
+    logger.info('Application reviewed successfully', {
+      applicationId: application.id,
+      status: application.isApproved,
+    });
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
+
+  private getAuthUserId(res: Response): string {
+    const authUserId = res.locals.authUserId as string | undefined;
+
+    if (!authUserId) {
+      throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
+    }
+
+    return authUserId;
+  }
 }
