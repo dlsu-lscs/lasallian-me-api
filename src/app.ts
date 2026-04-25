@@ -4,14 +4,12 @@ import { corsMiddleware } from './shared/middleware/auth.middleware.js';
 import { errorHandler } from './shared/middleware/error.middleware.js';
 // Register OpenAPI routes BEFORE importing swagger routes
 import './applications/application.openapi.js';
-import './authors/author.openapi.js';
 import './favorites/favorites.openapi.js';
 import './ratings/ratings.openapi.js';
 
 import authRoutes from './shared/auth/auth.routes.js';
 import userRoutes from './users/user.routes.js';
 import applicationRoutes from './applications/application.routes.js';
-import authorRoutes from '@/authors/author.routes.js';
 import favoritesRoutes from '@/favorites/favorites.routes.js';
 import ratingsRoutes from '@/ratings/ratings.routes.js';
 import swaggerRoutes from './shared/routes/swagger.routes.js';
@@ -26,8 +24,6 @@ app.use(corsMiddleware); // Apply CORS middleware
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/applications', applicationRoutes);
-
-app.use('/api/authors', authorRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api', ratingsRoutes);
 

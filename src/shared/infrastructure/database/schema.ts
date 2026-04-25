@@ -12,8 +12,11 @@ import {
   primaryKey,
   check,
   index,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+
+export const userRole = pgEnum('user_role', ['USER', 'ADMIN']);
 
 export const applicationApprovalStatus = pgEnum('application_approval_status', [
   'PENDING',
@@ -29,6 +32,7 @@ export const user = pgTable('user', {
   image: text('image'),
   website: text('website'),
   logo: text('logo'),
+  role: userRole('role').default('USER').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
@@ -113,7 +117,7 @@ export const account = pgTable(
   },
   (table) => [
     index('account_user_id_idx').on(table.userId),
-    index('account_provider_account_idx').on(table.providerId, table.accountId),
+    unique('account_provider_account_unq').on(table.providerId, table.accountId),
   ],
 );
 
@@ -147,13 +151,12 @@ export const ratings = pgTable(
       columns: [table.userId],
       foreignColumns: [user.id],
       name: 'ratings_user_id_fkey',
-    }),
+    }).onDelete('cascade'),
     foreignKey({
       columns: [table.applicationId],
       foreignColumns: [application.id],
       name: 'ratings_application_id_fkey',
     }).onDelete('cascade'),
-    index('ratings_user_id_idx').on(table.userId),
     index('ratings_application_id_idx').on(table.applicationId),
     check(
       'ratings_score_check',

@@ -14,7 +14,7 @@
     "start": "node .",
     "prestart": "npm run build",
     "dev": "tsx watch server.ts",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
