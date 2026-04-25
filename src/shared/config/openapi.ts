@@ -1,13 +1,10 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-// Extend Zod with OpenAPI capabilities FIRST
 extendZodWithOpenApi(z);
 
-// Re-export the extended z for use in DTOs
 export { z };
 
-// Create a new OpenAPI registry
 export const registry = new OpenAPIRegistry();
 
 /**
@@ -24,30 +21,6 @@ export const ErrorResponseSchema = z.object({
 registry.register('ErrorResponse', ErrorResponseSchema);
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
-
-// Register API Key security scheme (used by protected routes)
-registry.registerComponent('securitySchemes', 'ApiKeyAuth', {
-  type: 'apiKey',
-  in: 'header',
-  name: 'x-api-key',
-  description: 'API key for protected routes',
-});
-
-// Register session cookie security scheme (used by authenticated user routes)
-registry.registerComponent('securitySchemes', 'SessionAuth', {
-  type: 'apiKey',
-  in: 'cookie',
-  name: 'better-auth.session_token',
-  description: 'Better Auth session cookie for authenticated user routes',
-});
-
-// Register Better Auth OAuth state cookie security scheme
-registry.registerComponent('securitySchemes', 'StateAuth', {
-  type: 'apiKey',
-  in: 'cookie',
-  name: 'better-auth.state',
-  description: 'Better Auth OAuth state cookie',
-});
 
 
 /**
