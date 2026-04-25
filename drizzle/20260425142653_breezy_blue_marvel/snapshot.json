@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "befeea79-7772-44af-b08f-cc083215b4fb",
+  "id": "16fec080-d826-4847-aad5-df7de0c3d7a5",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -10,7 +10,8 @@
       "values": [
         "PENDING",
         "APPROVED",
-        "REJECTED"
+        "REJECTED",
+        "REMOVED"
       ],
       "name": "application_approval_status",
       "entityType": "enums",
@@ -542,6 +543,19 @@
     {
       "type": "text",
       "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "impersonated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "session"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
       "default": null,
@@ -639,6 +653,58 @@
       "generated": null,
       "identity": null,
       "name": "logo",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "role",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "banned",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ban_reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "user"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ban_expires",
       "entityType": "columns",
       "schema": "public",
       "table": "user"
@@ -798,34 +864,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "provider_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
-          "value": "account_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "account_provider_account_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "account"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
           "value": "user_id",
           "isExpression": false,
           "asc": true,
@@ -926,27 +964,6 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "application"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "ratings_user_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "ratings"
     },
     {
       "nameExplicit": true,
@@ -1056,7 +1073,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "ratings_user_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1201,6 +1218,18 @@
       "schema": "public",
       "table": "verification",
       "entityType": "pks"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "provider_id",
+        "account_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "account_provider_account_unq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "account"
     },
     {
       "nameExplicit": false,

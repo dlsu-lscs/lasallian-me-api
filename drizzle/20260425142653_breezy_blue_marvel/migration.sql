@@ -1,4 +1,4 @@
-CREATE TYPE "application_approval_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED');--> statement-breakpoint
+CREATE TYPE "application_approval_status" AS ENUM('PENDING', 'APPROVED', 'REJECTED', 'REMOVED');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY,
 	"account_id" text NOT NULL,
@@ -12,7 +12,8 @@ CREATE TABLE "account" (
 	"scope" text,
 	"password" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "account_provider_account_unq" UNIQUE("provider_id","account_id")
 );
 --> statement-breakpoint
 CREATE TABLE "application" (
@@ -48,6 +49,7 @@ CREATE TABLE "session" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"ip_address" text,
 	"user_agent" text,
+	"impersonated_by" text,
 	"user_id" text NOT NULL
 );
 --> statement-breakpoint
@@ -59,6 +61,10 @@ CREATE TABLE "user" (
 	"image" text,
 	"website" text,
 	"logo" text,
+	"role" text,
+	"banned" boolean,
+	"ban_reason" text,
+	"ban_expires" timestamp(6) with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -79,19 +85,17 @@ CREATE TABLE "verification" (
 );
 --> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" ("user_id");--> statement-breakpoint
-CREATE INDEX "account_provider_account_idx" ON "account" ("provider_id","account_id");--> statement-breakpoint
 CREATE INDEX "application_user_id_idx" ON "application" ("user_id");--> statement-breakpoint
 CREATE INDEX "application_created_at_idx" ON "application" ("created_at");--> statement-breakpoint
 CREATE INDEX "application_updated_at_idx" ON "application" ("updated_at");--> statement-breakpoint
 CREATE INDEX "application_title_idx" ON "application" ("title");--> statement-breakpoint
 CREATE INDEX "application_is_approved_idx" ON "application" ("is_approved");--> statement-breakpoint
-CREATE INDEX "ratings_user_id_idx" ON "ratings" ("user_id");--> statement-breakpoint
 CREATE INDEX "ratings_application_id_idx" ON "ratings" ("application_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" ("user_id");--> statement-breakpoint
 CREATE INDEX "user_favorite_application_id_idx" ON "user_favorite" ("application_id");--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "application" ADD CONSTRAINT "applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id");--> statement-breakpoint
+ALTER TABLE "ratings" ADD CONSTRAINT "ratings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "application"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "user_favorite" ADD CONSTRAINT "user_favorite_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
