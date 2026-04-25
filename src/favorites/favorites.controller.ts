@@ -1,15 +1,19 @@
-import type { Request, Response } from "express";
-import { logger } from "@/shared/utils/logger.js";
-import type { IFavoritesService } from "./favorites.service.js";
+import type { Request, Response } from 'express';
+import { logger } from '@/shared/utils/logger.js';
+import type { IFavoritesService } from './favorites.service.js';
 import {
+  ApplicationFavoritesCountResponseSchema,
   ApplicationFavoritesParamsSchema,
+  ApplicationFavoritesResponseSchema,
   CreateFavoriteRequestSchema,
   DeleteFavoriteParamsSchema,
+  FavoriteResponseSchema,
   UserFavoritesParamsSchema,
+  UserFavoritesResponseSchema,
   type ApplicationFavoritesCountResponse,
   type ApplicationFavoritesResponse,
   type UserFavoritesResponse,
-} from "./dto/index.js";
+} from './dto/index.js';
 
 export default class FavoritesController {
   constructor(private favoritesService: IFavoritesService) {}
@@ -19,116 +23,96 @@ export default class FavoritesController {
   createFavorite = async (req: Request, res: Response): Promise<void> => {
     const userId = this.getAuthenticatedUserId(res);
 
-    const parsed = CreateFavoriteRequestSchema.safeParse(req.body);
+    const body = CreateFavoriteRequestSchema.parse(req.body);
 
-    if (!parsed.success) {
-      logger.warn("Invalid request body", { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    logger.debug("Creating favorite", { userId, applicationId: parsed.data.applicationId });
+    logger.debug('Creating favorite', { userId, applicationId: body.applicationId });
 
     await this.favoritesService.createFavorite({
       userId,
-      applicationId: parsed.data.applicationId,
+      applicationId: body.applicationId,
     });
 
-    logger.info("Favorite created successfully", { userId, applicationId: parsed.data.applicationId });
+    logger.info('Favorite created successfully', { userId, applicationId: body.applicationId });
     res.status(204).send();
   };
 
   getUserFavorites = async (req: Request, res: Response): Promise<void> => {
-    const parsed = UserFavoritesParamsSchema.safeParse(req.params);
+    const { userId } = UserFavoritesParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn("Invalid path parameters", { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+    logger.debug('Fetching user favorites', { userId });
 
-    logger.debug("Fetching user favorites", { userId: parsed.data.userId });
-
-    const applicationIds = await this.favoritesService.getUserFavorite(parsed.data.userId);
+    const applicationIds = await this.favoritesService.getUserFavorite(userId);
 
     const response: UserFavoritesResponse = {
-      userId: parsed.data.userId,
+      userId,
       applicationIds,
     };
 
-    logger.info("User favorites retrieved successfully", {
-      userId: parsed.data.userId,
+    logger.info('User favorites retrieved successfully', {
+      userId,
       count: applicationIds.length,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = UserFavoritesResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   getApplicationFavorites = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationFavoritesParamsSchema.safeParse(req.params);
+    const { applicationId } = ApplicationFavoritesParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn("Invalid path parameters", { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    logger.debug("Fetching application favorites", {
-      applicationId: parsed.data.applicationId,
+    logger.debug('Fetching application favorites', {
+      applicationId,
     });
 
-    const userIds = await this.favoritesService.getApplicationFavorites(parsed.data.applicationId);
+    const userIds = await this.favoritesService.getApplicationFavorites(applicationId);
 
     const response: ApplicationFavoritesResponse = {
-      applicationId: parsed.data.applicationId,
+      applicationId,
       userIds,
       total: userIds.length,
     };
 
-    logger.info("Application favorites retrieved successfully", {
-      applicationId: parsed.data.applicationId,
+    logger.info('Application favorites retrieved successfully', {
+      applicationId,
       count: userIds.length,
     });
-    res.status(200).json(response);
+
+    const validatedResponse = ApplicationFavoritesResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   getApplicationFavoritesCount = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationFavoritesParamsSchema.safeParse(req.params);
+    const { applicationId } = ApplicationFavoritesParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn("Invalid path parameters", { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    logger.debug("Fetching application favorites count", {
-      applicationId: parsed.data.applicationId,
+    logger.debug('Fetching application favorites count', {
+      applicationId,
     });
 
-    const count = await this.favoritesService.getApplicationFavoritesCount(parsed.data.applicationId);
+    const count = await this.favoritesService.getApplicationFavoritesCount(applicationId);
 
     const response: ApplicationFavoritesCountResponse = {
-      applicationId: parsed.data.applicationId,
+      applicationId,
       count,
     };
 
-    logger.info("Application favorites count retrieved successfully", response);
-    res.status(200).json(response);
+    logger.info('Application favorites count retrieved successfully', response);
+
+    const validatedResponse = ApplicationFavoritesCountResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
   };
 
   deleteFavorite = async (req: Request, res: Response): Promise<void> => {
     const userId = this.getAuthenticatedUserId(res);
 
-    const parsed = DeleteFavoriteParamsSchema.safeParse(req.params);
+    const { applicationId } = DeleteFavoriteParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn("Invalid path parameters", { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+    logger.debug('Deleting favorite', { userId, applicationId });
 
-    logger.debug("Deleting favorite", { userId, applicationId: parsed.data.applicationId });
+    const favorite = await this.favoritesService.deleteFavorite(userId, applicationId);
 
-    const favorite = await this.favoritesService.deleteFavorite(
-      userId,
-      parsed.data.applicationId
-    );
+    logger.info('Favorite deleted successfully', { userId, applicationId });
 
-    logger.info("Favorite deleted successfully", { userId, applicationId: parsed.data.applicationId });
-    res.status(200).json(favorite);
+    const validatedResponse = FavoriteResponseSchema.parse(favorite);
+    res.status(200).json(validatedResponse);
   };
 }

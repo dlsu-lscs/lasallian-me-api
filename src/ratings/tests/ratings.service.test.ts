@@ -4,7 +4,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PGlite } from '@electric-sql/pglite';
 import { createTestDatabase } from '@/shared/config/test-database.js';
 import RatingsService from '../ratings.service.js';
-import { application, author, ratings, user } from '../ratings.model.js';
+import { application, ratings, user } from '../ratings.model.js';
 
 describe('RatingsService', () => {
   let service: RatingsService;
@@ -28,27 +28,6 @@ describe('RatingsService', () => {
 
     service = new RatingsService(db as unknown as NodePgDatabase);
 
-    const [createdAuthor] = await db
-      .insert(author)
-      .values({
-        name: 'Ratings Test Author',
-        email: 'ratings-author@example.com',
-      })
-      .returning({ id: author.id });
-
-    await db.insert(application).values([
-      {
-        title: 'Ratings App One',
-        slug: 'ratings-app-one',
-        authorId: createdAuthor.id,
-      },
-      {
-        title: 'Ratings App Two',
-        slug: 'ratings-app-two',
-        authorId: createdAuthor.id,
-      },
-    ]);
-
     await db.insert(user).values([
       {
         id: firstUser.id,
@@ -59,6 +38,23 @@ describe('RatingsService', () => {
         id: secondUser.id,
         name: 'Ratings User Two',
         email: secondUser.email,
+      },
+    ]);
+
+    await db.insert(application).values([
+      {
+        title: 'Ratings App One',
+        slug: 'ratings-app-one',
+        userId: firstUser.id,
+        isApproved: 'APPROVED',
+        rejectionReason: null,
+      },
+      {
+        title: 'Ratings App Two',
+        slug: 'ratings-app-two',
+        userId: firstUser.id,
+        isApproved: 'APPROVED',
+        rejectionReason: null,
       },
     ]);
   });

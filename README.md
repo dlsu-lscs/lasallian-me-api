@@ -16,7 +16,7 @@ To start the development server:
 cp .env.example .env
 ```
 
-**Windows (PowerShell)**
+   Windows (PowerShell)
 
 ```powershell
 Copy-Item .env.example .env
@@ -28,13 +28,14 @@ Then update at least your database connection string:
 DATABASE_URL=postgres://postgres:password@localhost:5432/database_name
 ```
 
-2. **Run database migrations**:
+1. **Run database migrations**:
 
    ```bash
    pnpm db:migrate
    ```
 
-3. **Start the development server**:
+1. **Start the development server**:
+
    ```bash
    pnpm dev
    ```
@@ -73,29 +74,24 @@ Routes (mounted under `/api/auth`):
 - Better Auth OpenAPI reference UI: `/api/auth/reference`
 - Better Auth OpenAPI schema JSON: `/api/auth/open-api/generate-schema`
 
-#### Testing Protected Endpoints In Swagger
+#### Testing Protected Endpoints In Swagger (Temporary solution)
 
-1. Sign in first using your normal auth flow (for example through the client at `CLIENT_URL`) so a Better Auth session cookie is created.
-2. Open `/api-docs` in the same browser session.
-3. Call protected endpoints (such as favorites and ratings write operations).
+1. Go to `/api/auth/reference`
+2. Press Test Request
+3. Overwrite json body type with {"provider": "google"} 
+4. Press Send
+5. Copy URL
+6. Paste into address bar
+7. Sign in with DLSU email
+8. Return to http://localhost:8000/api-docs/
+9. Make your user account admin through pnpm db:studio
+10. Test admin protected routes
 
 If you are not signed in (or the cookie is missing), those endpoints will return `401 Unauthorized`.
 
-### Authors
+### Authentication Notes
 
-#### API Key (for protected endpoints)
-
-Creating and deleting authors requires an API key via the `x-api-key` header.
-
-Add this to your `.env` file:
-
-```env
-API_SECRET_KEY=your-api-key
-```
-
-```http
-x-api-key: <API_SECRET_KEY>
-```
+Protected endpoints use the Better Auth session cookie. Sign in first, then call the API from the same browser session or provide the session cookie in your client.
 
 ## Tech Stack
 

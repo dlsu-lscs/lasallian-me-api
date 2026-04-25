@@ -1,24 +1,26 @@
 import type { Request, Response } from 'express';
-import type { ApplicationsList } from './application.service.js';
+import type { IApplicationService } from './application.service.js';
 import {
   ApplicationsListQuerySchema,
   ApplicationSlugParamsSchema,
   ApplicationIdParamsSchema,
   CreateApplicationRequestSchema,
   PatchApplicationRequestSchema,
+  ReviewApplicationRequestSchema,
+  ApplicationListItemResponseSchema,
+  ApplicationsListResponseSchema,
+  ApplicationResponseSchema,
 } from './dto/index.js';
+import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
-import type { ApplicationsListResponse, ApplicationsListFilters } from './dto/index.js';
-import type { SelectApplication, InsertApplication } from './application.model.js';
+import { HttpError } from '@/shared/middleware/error.middleware.js';
+import type { InsertApplication } from './application.model.js';
 
-
-export interface IApplicationService {
-  getPaginatedApplications(limit: number, page: number, filters?: ApplicationsListFilters): Promise<ApplicationsList>;
-  getApplicationBySlug(slug: string): Promise<SelectApplication>;
-  createApplication(app: InsertApplication): Promise<SelectApplication>;
-  patchApplicationById(id: number, updates: Partial<InsertApplication>): Promise<SelectApplication>;
-  deleteApplicationById(id: number): Promise<SelectApplication>;
-}
+export type CreateApplicationInput = Pick<
+  InsertApplication,
+  'title' | 'slug' | 'description' | 'url' | 'previewImages' | 'tags'
+>;
+export type PatchApplicationInput = Partial<CreateApplicationInput>;
 
 export class ApplicationController {
   constructor(private applicationService: IApplicationService) {}
@@ -28,127 +30,186 @@ export class ApplicationController {
    * @route GET /api/applications
    */
   getPaginatedApplications = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationsListQuerySchema.safeParse(req.query);
-    
-    if (!parsed.success) {
-      logger.warn('Invalid query parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    const { limit, page, ...filters } = parsed.data;
+    const { limit, page, ...filters } = ApplicationsListQuerySchema.parse(req.query);
 
     logger.debug('Fetching applications', { limit, page, filters });
 
-    const { data, total } = await this.applicationService.getPaginatedApplications(limit, page, filters);
+    const { data, total } = await this.applicationService.getPaginatedApplications(
+      limit,
+      page,
+      filters,
+    );
 
-    logger.info('Applications retrieved successfully', { 
-      count: data.length, 
+    logger.info('Applications retrieved successfully', {
+      count: data.length,
       total,
-      page, 
-      limit 
+      page,
+      limit,
     });
 
-    const response: ApplicationsListResponse = {
+    const response = {
       data,
       meta: {
         page,
         limit,
         count: data.length,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
 
-    res.status(200).json(response);
-  }
+    const parsed = ApplicationsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
+  };
+
+  /**
+   * Handles GET requests for applications in moderation queue (Admin only)
+   * @route GET /api/applications/admin
+   */
+  getAdminApplications = async (req: Request, res: Response): Promise<void> => {
+    const { limit, page, ...filters } = AdminApplicationsListQuerySchema.parse(req.query);
+
+    logger.debug('Fetching admin applications', { limit, page, filters });
+
+    const { data, total } = await this.applicationService.getAdminApplications(
+      limit,
+      page,
+      filters,
+    );
+
+    logger.info('Admin applications retrieved successfully', {
+      count: data.length,
+      total,
+      page,
+      limit,
+    });
+
+    const response = {
+      data,
+      meta: {
+        page,
+        limit,
+        count: data.length,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+
+    const parsed = ApplicationsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
+  };
 
   /**
    * Handles GET requests for a single application by slug
    * @route GET /api/applications/:slug
    */
   getApplicationBySlug = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationSlugParamsSchema.safeParse(req.params);
+    const { slug } = ApplicationSlugParamsSchema.parse(req.params);
 
-    if (!parsed.success) {
-      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+    logger.debug('Fetching application by slug', { slug });
 
-    logger.debug('Fetching application by slug', { slug: parsed.data.slug });
+    const application = await this.applicationService.getApplicationBySlug(slug);
 
-    const application = await this.applicationService.getApplicationBySlug(parsed.data.slug);
+    logger.info('Application retrieved successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
 
-    logger.info('Application retrieved successfully', { applicationId: application.id, slug: application.slug });
-    res.status(200).json(application);
-  }
+    const parsed = ApplicationListItemResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
 
   /**
    * @route POST request for creating a single application
    */
-  createApplication = async(req: Request, res: Response): Promise<void> => {
-    const parsed = CreateApplicationRequestSchema.safeParse(req.body)
-    
-    if(!parsed.success){
-      logger.warn('Invalid request body', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
+  createApplication = async (req: Request, res: Response): Promise<void> => {
+    const body = CreateApplicationRequestSchema.parse(req.body);
+    const authUserId = this.getAuthUserId(res);
 
-    logger.debug('Creating application', { slug: parsed.data.slug });
+    logger.debug('Creating application', { slug: body.slug });
 
-    const application = await this.applicationService.createApplication(parsed.data)
+    const application = await this.applicationService.createApplication(body, authUserId);
 
-    logger.info('Application created successfully', { applicationId: application.id, slug: application.slug });
-    res.status(201).json(application)
-  }
+    logger.info('Application created successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(201).json(parsed);
+  };
 
   /**
    * Handles PATCH requests for updating an application
    * @route PATCH /api/applications/:id
    */
   patchApplicationById = async (req: Request, res: Response): Promise<void> => {
-    const paramsResult = ApplicationIdParamsSchema.safeParse(req.params);
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = PatchApplicationRequestSchema.parse(req.body);
+    const authUserId = this.getAuthUserId(res);
 
-    if (!paramsResult.success) {
-      logger.warn('Invalid path parameters', { errors: paramsResult.error.issues });
-      throw paramsResult.error;
-    }
+    logger.debug('Patching application', { id, updates: body });
 
-    const bodyResult = PatchApplicationRequestSchema.safeParse(req.body);
+    const application = await this.applicationService.patchApplicationById(id, body, authUserId);
 
-    if (!bodyResult.success) {
-      logger.warn('Invalid request body', { errors: bodyResult.error.issues });
-      throw bodyResult.error;
-    }
+    logger.info('Application patched successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
 
-    const { id } = paramsResult.data;
-
-    logger.debug('Patching application', { id, updates: bodyResult.data });
-
-    const application = await this.applicationService.patchApplicationById(id, bodyResult.data);
-
-    logger.info('Application patched successfully', { applicationId: application.id, slug: application.slug });
-    res.status(200).json(application);
-  }
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
 
   /**
    * Handles DELETE requests for removing an application
    * @route DELETE /api/applications/:id
    */
   deleteApplicationById = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationIdParamsSchema.safeParse(req.params);
-
-    if (!parsed.success) {
-      logger.warn('Invalid path parameters', { errors: parsed.error.issues });
-      throw parsed.error;
-    }
-
-    const { id } = parsed.data;
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const authUserId = this.getAuthUserId(res);
 
     logger.debug('Deleting application', { id });
 
-    const application = await this.applicationService.deleteApplicationById(id);
+    const application = await this.applicationService.deleteApplicationById(id, authUserId);
 
-    logger.info('Application deleted successfully', { applicationId: application.id, slug: application.slug });
-    res.status(200).json(application);
+    logger.info('Application deleted successfully', {
+      applicationId: application.id,
+      slug: application.slug,
+    });
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
+
+  /**
+   * Handles PATCH requests for admin review (approve/reject) of an application
+   * @route PATCH /api/applications/admin/:id/review
+   */
+  reviewAdminApplicationById = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = ReviewApplicationRequestSchema.parse(req.body);
+
+    logger.debug('Reviewing application', { id, decision: body.isApproved });
+
+    const application = await this.applicationService.reviewAdminApplicationById(id, body);
+
+    logger.info('Application reviewed successfully', {
+      applicationId: application.id,
+      status: application.isApproved,
+    });
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
+
+  private getAuthUserId(res: Response): string {
+    const authUserId = res.locals.authUserId as string | undefined;
+
+    if (!authUserId) {
+      throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
+    }
+
+    return authUserId;
   }
 }
