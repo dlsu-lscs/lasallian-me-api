@@ -19,6 +19,10 @@ const app = express();
 app.use(express.json());
 app.use(corsMiddleware); // Apply CORS middleware
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationRoutes);
