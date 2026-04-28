@@ -14,6 +14,7 @@ import ratingsRoutes from '@/ratings/ratings.routes.js';
 import swaggerRoutes from './shared/routes/swagger.routes.js';
 
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Middleware
 app.use(express.json());
@@ -30,7 +31,9 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api', ratingsRoutes);
 
 // API Documentation (mounted last)
-app.use('/api-docs', swaggerRoutes);
+if (!isProduction) {
+  app.use('/api-docs', swaggerRoutes);
+}
 
 // Error handling (must be after all routes)
 app.use(errorHandler);

@@ -4,6 +4,8 @@ import { db } from '@/shared/config/database.js';
 import * as schema from '@/shared/infrastructure/database/schema.js';
 import { openAPI, admin } from 'better-auth/plugins';
 
+const isProd = process.env.NODE_ENV === 'production'
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -33,5 +35,5 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:3000'],
-  plugins: [openAPI(), admin()],
+  plugins: [...(!isProd ? [openAPI()] : []), admin()],
 });
