@@ -1,0 +1,1 @@
+ALTER TABLE "ratings" ALTER COLUMN "is_anonymous" SET NOT NULL;

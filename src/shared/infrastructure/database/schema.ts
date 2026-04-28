@@ -142,7 +142,7 @@ export const ratings = pgTable(
     userId: text('user_id').notNull(),
     applicationId: integer('application_id').notNull(),
     comment: varchar({ length: 255 }),
-    isAnonymous: boolean('is_anonymous').default(false),
+    isAnonymous: boolean('is_anonymous').notNull().default(false),
     score: doublePrecision().default(0).notNull(),
   },
   (table) => [
