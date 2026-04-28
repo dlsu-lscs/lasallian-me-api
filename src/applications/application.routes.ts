@@ -17,13 +17,6 @@ const applicationController = new ApplicationController(applicationService);
 router.get('/', applicationController.getPaginatedApplications);
 
 /**
- * @route GET /api/applications/:slug
- * @description Get a single application by slug
- * @access Public
- */
-router.get('/:slug', applicationController.getApplicationBySlug);
-
-/**
  * @route POST /api/applications
  * @description Create an application
  * @access Private
@@ -62,5 +55,12 @@ router.patch(
   requireRole('admin'),
   applicationController.reviewAdminApplicationById,
 );
+
+/**
+ * @route GET /api/applications/:slug
+ * @description Get a single application by slug
+ * @access Public
+ */
+router.get('/:slug', applicationController.getApplicationBySlug);
 
 export default router;

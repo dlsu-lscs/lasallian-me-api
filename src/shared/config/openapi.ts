@@ -43,7 +43,7 @@ export function generateOpenAPIDocument() {
     },
     servers: [
       {
-        url: 'http://localhost:8000',
+        url: process.env.BETTER_AUTH_URL || 'http://localhost:8000',
         description: 'Development server',
       },
     ],
