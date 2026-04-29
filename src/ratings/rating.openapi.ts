@@ -1,17 +1,20 @@
 import { ErrorResponseSchema, registry } from '@/shared/config/openapi.js';
 import {
-  ApplicationRatingsParamsSchema,
-  ApplicationRatingsResponseSchema,
+  ApplicationRatingParamsSchema,
+  ApplicationRatingResponseSchema,
   CreateRatingRequestSchema,
   PatchRatingRequestSchema,
   RatingResponseSchema,
+  UserRatingsParamsSchema,
+  UserRatingsResponseSchema,
 } from './dto/index.js';
 
 const authenticatedUserSecurity: Array<Record<string, string[]>> = [
   { SessionAuth: [], StateAuth: [] },
 ];
 
-registry.register('ApplicationRatingsParams', ApplicationRatingsParamsSchema);
+registry.register('ApplicationRatingsParams', ApplicationRatingParamsSchema);
+registry.register('UserRatingsParams', UserRatingsParamsSchema);
 registry.register('CreateRatingRequest', CreateRatingRequestSchema);
 registry.register('PatchRatingRequest', PatchRatingRequestSchema);
 
@@ -22,14 +25,14 @@ registry.registerPath({
   summary: 'Get application ratings',
   tags: ['Ratings'],
   request: {
-    params: ApplicationRatingsParamsSchema,
+    params: ApplicationRatingParamsSchema,
   },
   responses: {
     200: {
       description: 'Successfully retrieved application ratings',
       content: {
         'application/json': {
-          schema: ApplicationRatingsResponseSchema,
+          schema: ApplicationRatingResponseSchema,
         },
       },
     },
@@ -61,6 +64,43 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/ratings/users/{userId}',
+  description: 'Get all ratings for a user',
+  summary: 'Get user ratings',
+  tags: ['Ratings'],
+  request: {
+    params: UserRatingsParamsSchema,
+  },
+  responses: {
+    200: {
+      description: 'Successfully retrieved user ratings',
+      content: {
+        'application/json': {
+          schema: UserRatingsResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid path parameter - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+registry.registerPath({
   method: 'post',
   path: '/api/applications/{slug}/ratings',
   description: 'Create a rating for an application by slug',
@@ -68,7 +108,7 @@ registry.registerPath({
   security: authenticatedUserSecurity,
   tags: ['Ratings'],
   request: {
-    params: ApplicationRatingsParamsSchema,
+    params: ApplicationRatingParamsSchema,
     body: {
       content: {
         'application/json': {
@@ -137,7 +177,7 @@ registry.registerPath({
   security: authenticatedUserSecurity,
   tags: ['Ratings'],
   request: {
-    params: ApplicationRatingsParamsSchema,
+    params: ApplicationRatingParamsSchema,
     body: {
       content: {
         'application/json': {
@@ -198,7 +238,7 @@ registry.registerPath({
   security: authenticatedUserSecurity,
   tags: ['Ratings'],
   request: {
-    params: ApplicationRatingsParamsSchema,
+    params: ApplicationRatingParamsSchema,
   },
   responses: {
     200: {
