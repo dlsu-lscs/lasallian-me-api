@@ -5,7 +5,7 @@ import { relations } from '@/shared/infrastructure/database/relations.js';
 
 export const createTestDatabase = async () => {
   const client = new PGlite();
-  const db = drizzle({ client, relations });
+  const db = drizzle({ client: client, relations });
 
   await migrate(db, { migrationsFolder: 'drizzle' });
 

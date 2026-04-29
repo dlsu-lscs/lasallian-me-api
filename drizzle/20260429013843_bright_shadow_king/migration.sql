@@ -31,14 +31,14 @@ CREATE TABLE "application" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ratings" (
+CREATE TABLE "rating" (
 	"user_id" text,
 	"application_id" integer,
 	"comment" varchar(255),
-	"is_anonymous" boolean DEFAULT false,
+	"is_anonymous" boolean DEFAULT false NOT NULL,
 	"score" double precision DEFAULT 0 NOT NULL,
-	CONSTRAINT "ratings_pkey" PRIMARY KEY("user_id","application_id"),
-	CONSTRAINT "ratings_score_check" CHECK ((score >= (0.0)::double precision) AND (score <= (5.0)::double precision))
+	CONSTRAINT "rating_pkey" PRIMARY KEY("user_id","application_id"),
+	CONSTRAINT "rating_score_check" CHECK ((score >= (0.0)::double precision) AND (score <= (5.0)::double precision))
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -90,13 +90,13 @@ CREATE INDEX "application_created_at_idx" ON "application" ("created_at");--> st
 CREATE INDEX "application_updated_at_idx" ON "application" ("updated_at");--> statement-breakpoint
 CREATE INDEX "application_title_idx" ON "application" ("title");--> statement-breakpoint
 CREATE INDEX "application_is_approved_idx" ON "application" ("is_approved");--> statement-breakpoint
-CREATE INDEX "ratings_application_id_idx" ON "ratings" ("application_id");--> statement-breakpoint
+CREATE INDEX "rating_application_id_idx" ON "rating" ("application_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" ("user_id");--> statement-breakpoint
 CREATE INDEX "user_favorite_application_id_idx" ON "user_favorite" ("application_id");--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "application" ADD CONSTRAINT "applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "application"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "rating" ADD CONSTRAINT "rating_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "rating" ADD CONSTRAINT "rating_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "application"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "user_favorite" ADD CONSTRAINT "user_favorite_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "user_favorite" ADD CONSTRAINT "user_favorite_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "application"("id") ON DELETE CASCADE;

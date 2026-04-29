@@ -1,10 +1,10 @@
 import { defineRelations } from 'drizzle-orm';
-import { application, user, ratings, userFavorite, session, account } from './schema.js';
+import { application, user, rating, userFavorite, session, account } from './schema.js';
 
 export const relations = defineRelations(
   {
     application,
-    ratings,
+    rating,
     userFavorite,
     user,
     session,
@@ -16,16 +16,16 @@ export const relations = defineRelations(
         from: r.application.userId,
         to: r.user.id,
       }),
-      ratings: r.many.ratings(),
+      rating: r.many.rating(),
       userFavorite: r.many.userFavorite(),
     },
-    ratings: {
+    rating: {
       user: r.one.user({
-        from: r.ratings.userId,
+        from: r.rating.userId,
         to: r.user.id,
       }),
       application: r.one.application({
-        from: r.ratings.applicationId,
+        from: r.rating.applicationId,
         to: r.application.id,
       }),
     },
@@ -43,7 +43,7 @@ export const relations = defineRelations(
       sessions: r.many.session(),
       accounts: r.many.account(),
       applications: r.many.application(),
-      ratings: r.many.ratings(),
+      rating: r.many.rating(),
       userFavorite: r.many.userFavorite(),
     },
     session: {
