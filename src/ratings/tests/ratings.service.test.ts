@@ -3,8 +3,8 @@ import { PgliteDatabase } from 'drizzle-orm/pglite';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PGlite } from '@electric-sql/pglite';
 import { createTestDatabase } from '@/shared/config/test-database.js';
-import RatingsService from '../ratings.service.js';
-import { application, ratings, user } from '../ratings.model.js';
+import RatingsService from '../rating.service.js';
+import { application, rating, user } from '../rating.model.js';
 
 describe('RatingsService', () => {
   let service: RatingsService;
@@ -60,7 +60,7 @@ describe('RatingsService', () => {
   });
 
   afterEach(async () => {
-    await db.delete(ratings);
+    await db.delete(rating);
   });
 
   afterAll(async () => {
@@ -69,7 +69,7 @@ describe('RatingsService', () => {
 
   describe('getApplicationRatingsBySlug', () => {
     it('should return empty ratings for an application with no ratings', async () => {
-      const result = await service.getApplicationRatingsBySlug('ratings-app-one');
+      const result = await service.getApplicationRatingBySlug('ratings-app-one');
 
       expect(result.applicationSlug).toBe('ratings-app-one');
       expect(result.ratings).toEqual([]);
@@ -92,7 +92,7 @@ describe('RatingsService', () => {
       expect(created.isAnonymous).toBe(false);
       expect(created.userEmail).toBe(firstUser.email);
 
-      const list = await service.getApplicationRatingsBySlug('ratings-app-one');
+      const list = await service.getApplicationRatingBySlug('ratings-app-one');
       expect(list.total).toBe(1);
       expect(list.averageScore).toBe(4.5);
     });
@@ -179,7 +179,7 @@ describe('RatingsService', () => {
 
       expect(deleted.applicationId).toBe(created.applicationId);
 
-      const list = await service.getApplicationRatingsBySlug('ratings-app-one');
+      const list = await service.getApplicationRatingBySlug('ratings-app-one');
       expect(list.total).toBe(0);
       expect(list.averageScore).toBe(0);
     });
@@ -196,5 +196,23 @@ describe('RatingsService', () => {
         code: 'NOT_FOUND',
       });
     });
+
+    it('should get all ratings only by a single user', async () => {
+      await service.createRatingByApplicationSlug('ratings-app-one', firstUser.id, {
+        score: 4,
+      })
+      await service.createRatingByApplicationSlug('ratings-app-two', firstUser.id, {
+        score: 4,
+      })
+
+      await service.createRatingByApplicationSlug('ratings-app-two', secondUser.id, {
+        score: 4,
+      })
+      
+      const ratings = await service.getRatingByUserId(firstUser.id)
+      
+
+      expect(ratings.length).toBe(2)
+    })
   });
 });

@@ -2,27 +2,26 @@ import { and, eq, avg } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import {
-  ApplicationRatingsResponseSchema,
+  ApplicationRatingResponseSchema,
   RatingResponseSchema,
-  type ApplicationRatingsResponse,
+  type ApplicationRatingResponse,
   type RatingResponse,
 } from './dto/index.js';
-import {
-  application,
-  ratings,
-  type InsertRating,
-  type SelectRating,
-  user,
-} from './ratings.model.js';
+import { application, rating, type InsertRating, type SelectRating, user } from './rating.model.js';
+import { SelectApplication } from '@/applications/application.model.js';
 
-export type RatingWithUserEmail = RatingResponse;
-export type ApplicationRatings = ApplicationRatingsResponse;
-type RawRatingWithUserEmail = Omit<RatingWithUserEmail, 'isAnonymous'> & {
-  isAnonymous: boolean | null;
+type RatingWithUserEmail = RatingResponse;
+
+type ApplicationRating = ApplicationRatingResponse;
+
+type RatingWithApplication = Omit<SelectRating, 'userId'> & {
+  userId: string | null;
+  application: Pick<SelectApplication, 'id' | 'slug' | 'title'>;
 };
 
-export interface IRatingsService {
-  getApplicationRatingsBySlug(slug: string): Promise<ApplicationRatings>;
+export interface IRatingService {
+  getApplicationRatingBySlug(slug: string): Promise<ApplicationRating>;
+  getRatingByUserId(userId: string): Promise<RatingWithApplication[]>;
   createRatingByApplicationSlug(
     slug: string,
     userId: string,
@@ -36,7 +35,7 @@ export interface IRatingsService {
   deleteRatingByApplicationSlug(slug: string, userId: string): Promise<RatingWithUserEmail>;
 }
 
-export default class RatingsService implements IRatingsService {
+export default class RatingService implements IRatingService {
   constructor(private readonly db: NodePgDatabase) {}
 
   private getApplicationBySlug = async (slug: string): Promise<{ id: number; slug: string }> => {
@@ -71,17 +70,17 @@ export default class RatingsService implements IRatingsService {
     userId: string,
     applicationId: number,
   ): Promise<SelectRating | undefined> => {
-    const [rating] = await this.db
+    const [ratings] = await this.db
       .select()
-      .from(ratings)
-      .where(and(eq(ratings.userId, userId), eq(ratings.applicationId, applicationId)))
+      .from(rating)
+      .where(and(eq(rating.userId, userId), eq(rating.applicationId, applicationId)))
       .limit(1);
 
-    return rating;
+    return ratings;
   };
 
-  private formatRating = (rating: RawRatingWithUserEmail): RatingWithUserEmail => {
-    const isAnonymous = rating.isAnonymous ?? false;
+  private formatRating = (rating: RatingWithUserEmail): RatingWithUserEmail => {
+    const isAnonymous = rating.isAnonymous;
 
     return RatingResponseSchema.parse({
       ...rating,
@@ -90,25 +89,25 @@ export default class RatingsService implements IRatingsService {
     });
   };
 
-  getApplicationRatingsBySlug = async (slug: string): Promise<ApplicationRatings> => {
+  getApplicationRatingBySlug = async (slug: string): Promise<ApplicationRating> => {
     const app = await this.getApplicationBySlug(slug);
 
     const [averageRows, ratingRows] = await Promise.all([
       this.db
-        .select({ average: avg(ratings.score) })
-        .from(ratings)
-        .where(eq(ratings.applicationId, app.id)),
+        .select({ average: avg(rating.score) })
+        .from(rating)
+        .where(eq(rating.applicationId, app.id)),
       this.db
         .select({
-          applicationId: ratings.applicationId,
-          score: ratings.score,
-          comment: ratings.comment,
-          isAnonymous: ratings.isAnonymous,
+          applicationId: rating.applicationId,
+          score: rating.score,
+          comment: rating.comment,
+          isAnonymous: rating.isAnonymous,
           userEmail: user.email,
         })
-        .from(ratings)
-        .innerJoin(user, eq(ratings.userId, user.id))
-        .where(eq(ratings.applicationId, app.id)),
+        .from(rating)
+        .innerJoin(user, eq(rating.userId, user.id))
+        .where(eq(rating.applicationId, app.id)),
     ]);
 
     const [average] = averageRows;
@@ -117,7 +116,7 @@ export default class RatingsService implements IRatingsService {
 
     const total = formattedRatings.length;
 
-    return ApplicationRatingsResponseSchema.parse({
+    return ApplicationRatingResponseSchema.parse({
       applicationSlug: app.slug,
       ratings: formattedRatings,
       total,
@@ -153,7 +152,7 @@ export default class RatingsService implements IRatingsService {
       isAnonymous: payload.isAnonymous ?? false,
     };
 
-    await this.db.insert(ratings).values(insertPayload);
+    await this.db.insert(rating).values(insertPayload);
 
     return this.formatRating({
       applicationId: app.id,
@@ -178,23 +177,20 @@ export default class RatingsService implements IRatingsService {
 
     const [updatedRows, ownerRows] = await Promise.all([
       this.db
-        .update(ratings)
+        .update(rating)
         .set({
           score: updates.score,
           comment: updates.comment,
           isAnonymous: updates.isAnonymous,
         })
         .where(
-          and(
-            eq(ratings.userId, existing.userId),
-            eq(ratings.applicationId, existing.applicationId),
-          ),
+          and(eq(rating.userId, existing.userId), eq(rating.applicationId, existing.applicationId)),
         )
         .returning({
-          applicationId: ratings.applicationId,
-          score: ratings.score,
-          comment: ratings.comment,
-          isAnonymous: ratings.isAnonymous,
+          applicationId: rating.applicationId,
+          score: rating.score,
+          comment: rating.comment,
+          isAnonymous: rating.isAnonymous,
         }),
       this.db.select({ email: user.email }).from(user).where(eq(user.id, userId)).limit(1),
     ]);
@@ -225,14 +221,11 @@ export default class RatingsService implements IRatingsService {
 
     const [deletedRows, ownerRows] = await Promise.all([
       this.db
-        .delete(ratings)
+        .delete(rating)
         .where(
-          and(
-            eq(ratings.userId, existing.userId),
-            eq(ratings.applicationId, existing.applicationId),
-          ),
+          and(eq(rating.userId, existing.userId), eq(rating.applicationId, existing.applicationId)),
         )
-        .returning({ applicationId: ratings.applicationId }),
+        .returning({ applicationId: rating.applicationId }),
       this.db.select({ email: user.email }).from(user).where(eq(user.id, userId)).limit(1),
     ]);
 
@@ -250,5 +243,31 @@ export default class RatingsService implements IRatingsService {
       isAnonymous: existing.isAnonymous ?? false,
       userEmail: owner?.email ?? null,
     });
+  };
+
+  getRatingByUserId = async (userId: string): Promise<RatingWithApplication[]> => {
+    const rows = await this.db
+      .select({
+        userId: rating.userId,
+        applicationId: rating.applicationId,
+        score: rating.score,
+        comment: rating.comment,
+        isAnonymous: rating.isAnonymous,
+        appId: application.id,
+        appSlug: application.slug,
+        appTitle: application.title,
+      })
+      .from(rating)
+      .innerJoin(application, eq(rating.applicationId, application.id))
+      .where(eq(rating.userId, userId));
+
+    return rows.map((row) => ({
+      userId: row.isAnonymous ? null : row.userId,
+      applicationId: row.applicationId,
+      score: row.score,
+      comment: row.comment,
+      isAnonymous: row.isAnonymous,
+      application: { id: row.appId, slug: row.appSlug, title: row.appTitle },
+    }));
   };
 }

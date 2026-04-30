@@ -4,7 +4,7 @@ import { db } from '../src/shared/config/database.js';
 import {
   account,
   application,
-  ratings,
+  rating,
   session,
   user,
   userFavorite,
@@ -21,7 +21,7 @@ const SEED_NUMBER = 42;
 const resetSchema = {
   account,
   application,
-  ratings,
+  rating,
   session,
   user,
   userFavorite,
@@ -101,7 +101,7 @@ async function seedDatabase() {
       throw new Error('FAVORITES_PER_USER cannot exceed the number of seeded applications.');
     }
 
-    logger.info('Generating ratings with unique application assignments per user...');
+    logger.info('Generating rating with unique application assignments per user...');
     const cycledApplicationIdsForRatings = [...seededApplicationIds, ...seededApplicationIds];
     const ratingRows = seededUsers.flatMap((seededUser, userIndex) => {
       const startIndex = (userIndex * RATINGS_PER_USER) % seededApplicationIds.length;
@@ -120,7 +120,7 @@ async function seedDatabase() {
     });
 
     if (ratingRows.length > 0) {
-      await db.insert(ratings).values(ratingRows);
+      await db.insert(rating).values(ratingRows);
     }
 
     logger.info('Generating user favorites with unique application assignments per user...');
@@ -148,7 +148,7 @@ async function seedDatabase() {
 
     logger.info('Full database seeding completed successfully!');
     logger.info(
-      `Summary: ${seededUsers.length} users, ${seededApplicationIds.length} applications, ${seededUsers.length * RATINGS_PER_USER} ratings, ${seededUsers.length * FAVORITES_PER_USER} favorites`,
+      `Summary: ${seededUsers.length} users, ${seededApplicationIds.length} applications, ${seededUsers.length * RATINGS_PER_USER} rating, ${seededUsers.length * FAVORITES_PER_USER} favorites`,
     );
 
     process.exit(0);

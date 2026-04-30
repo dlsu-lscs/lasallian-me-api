@@ -1,28 +1,33 @@
 import type { Request, Response } from 'express';
 import { logger } from '@/shared/utils/logger.js';
-import type { ApplicationRatingsResponse, RatingResponse } from './dto/index.js';
+import type {
+  ApplicationRatingResponse,
+  RatingResponse,
+  UserRatingsResponse,
+} from './dto/index.js';
 import {
-  ApplicationRatingsParamsSchema,
-  ApplicationRatingsResponseSchema,
+  ApplicationRatingParamsSchema,
+  ApplicationRatingResponseSchema,
   CreateRatingRequestSchema,
   PatchRatingRequestSchema,
   RatingResponseSchema,
+  UserRatingsResponseSchema,
 } from './dto/index.js';
-import type { IRatingsService } from './ratings.service.js';
+import type { IRatingService } from './rating.service.js';
 
-export default class RatingsController {
-  constructor(private readonly ratingsService: IRatingsService) {}
+export default class RatingController {
+  constructor(private readonly ratingsService: IRatingService) {}
 
   private getAuthenticatedUserId = (res: Response): string => res.locals.authUserId as string;
 
-  getApplicationRatings = async (req: Request, res: Response): Promise<void> => {
-    const parsed = ApplicationRatingsParamsSchema.parse(req.params);
+  getApplicationRating = async (req: Request, res: Response): Promise<void> => {
+    const parsed = ApplicationRatingParamsSchema.parse(req.params);
 
     logger.debug('Fetching application ratings', { slug: parsed.slug });
 
-    const ratings = await this.ratingsService.getApplicationRatingsBySlug(parsed.slug);
+    const ratings = await this.ratingsService.getApplicationRatingBySlug(parsed.slug);
 
-    const response: ApplicationRatingsResponse = {
+    const response: ApplicationRatingResponse = {
       applicationSlug: ratings.applicationSlug,
       ratings: ratings.ratings,
       total: ratings.total,
@@ -35,14 +40,36 @@ export default class RatingsController {
       averageScore: response.averageScore,
     });
 
-    const validatedResponse = ApplicationRatingsResponseSchema.parse(response);
+    const validatedResponse = ApplicationRatingResponseSchema.parse(response);
+    res.status(200).json(validatedResponse);
+  };
+
+  getUserRatings = async (req: Request, res: Response): Promise<void> => {
+    const userId = this.getAuthenticatedUserId(res);
+
+    logger.debug('Fetching user ratings', { userId });
+
+    const ratings = await this.ratingsService.getRatingByUserId(userId);
+
+    const response: UserRatingsResponse = {
+      userId,
+      ratings,
+      total: ratings.length,
+    };
+
+    logger.info('User ratings retrieved successfully', {
+      userId,
+      total: response.total,
+    });
+
+    const validatedResponse = UserRatingsResponseSchema.parse(response);
     res.status(200).json(validatedResponse);
   };
 
   createRating = async (req: Request, res: Response): Promise<void> => {
     const userId = this.getAuthenticatedUserId(res);
 
-    const params = ApplicationRatingsParamsSchema.parse(req.params);
+    const params = ApplicationRatingParamsSchema.parse(req.params);
     const body = CreateRatingRequestSchema.parse(req.body);
 
     logger.debug('Creating rating', { slug: params.slug, userId });
@@ -68,7 +95,7 @@ export default class RatingsController {
   patchRating = async (req: Request, res: Response): Promise<void> => {
     const userId = this.getAuthenticatedUserId(res);
 
-    const params = ApplicationRatingsParamsSchema.parse(req.params);
+    const params = ApplicationRatingParamsSchema.parse(req.params);
     const body = PatchRatingRequestSchema.parse(req.body);
 
     logger.debug('Patching rating', { slug: params.slug, userId });
@@ -94,7 +121,7 @@ export default class RatingsController {
   deleteRating = async (req: Request, res: Response): Promise<void> => {
     const userId = this.getAuthenticatedUserId(res);
 
-    const params = ApplicationRatingsParamsSchema.parse(req.params);
+    const params = ApplicationRatingParamsSchema.parse(req.params);
 
     logger.debug('Deleting rating', { slug: params.slug, userId });
 

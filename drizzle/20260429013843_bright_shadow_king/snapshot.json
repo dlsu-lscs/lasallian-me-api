@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "16fec080-d826-4847-aad5-df7de0c3d7a5",
+  "id": "fab0bf18-f18e-4a9e-84c7-63397d8eaac4",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -31,7 +31,7 @@
     },
     {
       "isRlsEnabled": false,
-      "name": "ratings",
+      "name": "rating",
       "entityType": "tables",
       "schema": "public"
     },
@@ -395,7 +395,7 @@
       "name": "user_id",
       "entityType": "columns",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "type": "integer",
@@ -408,7 +408,7 @@
       "name": "application_id",
       "entityType": "columns",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "type": "varchar(255)",
@@ -421,12 +421,12 @@
       "name": "comment",
       "entityType": "columns",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "type": "boolean",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "false",
       "generated": null,
@@ -434,7 +434,7 @@
       "name": "is_anonymous",
       "entityType": "columns",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "type": "double precision",
@@ -447,7 +447,7 @@
       "name": "score",
       "entityType": "columns",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "type": "text",
@@ -981,10 +981,10 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "ratings_application_id_idx",
+      "name": "rating_application_id_idx",
       "entityType": "indexes",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "nameExplicit": true,
@@ -1074,10 +1074,10 @@
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "name": "ratings_user_id_fkey",
+      "name": "rating_user_id_fkey",
       "entityType": "fks",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "nameExplicit": true,
@@ -1091,10 +1091,10 @@
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "name": "ratings_application_id_fkey",
+      "name": "rating_application_id_fkey",
       "entityType": "fks",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "nameExplicit": false,
@@ -1153,10 +1153,10 @@
         "application_id"
       ],
       "nameExplicit": true,
-      "name": "ratings_pkey",
+      "name": "rating_pkey",
       "entityType": "pks",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     },
     {
       "columns": [
@@ -1266,10 +1266,10 @@
     },
     {
       "value": "(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)",
-      "name": "ratings_score_check",
+      "name": "rating_score_check",
       "entityType": "checks",
       "schema": "public",
-      "table": "ratings"
+      "table": "rating"
     }
   ],
   "renames": []

@@ -136,33 +136,33 @@ export const verification = pgTable('verification', {
     .notNull(),
 });
 
-export const ratings = pgTable(
-  'ratings',
+export const rating = pgTable(
+  'rating',
   {
     userId: text('user_id').notNull(),
     applicationId: integer('application_id').notNull(),
     comment: varchar({ length: 255 }),
-    isAnonymous: boolean('is_anonymous').default(false),
+    isAnonymous: boolean('is_anonymous').notNull().default(false),
     score: doublePrecision().default(0).notNull(),
   },
   (table) => [
     primaryKey({
       columns: [table.userId, table.applicationId],
-      name: 'ratings_pkey',
+      name: 'rating_pkey',
     }),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
-      name: 'ratings_user_id_fkey',
+      name: 'rating_user_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.applicationId],
       foreignColumns: [application.id],
-      name: 'ratings_application_id_fkey',
+      name: 'rating_application_id_fkey',
     }).onDelete('cascade'),
-    index('ratings_application_id_idx').on(table.applicationId),
+    index('rating_application_id_idx').on(table.applicationId),
     check(
-      'ratings_score_check',
+      'rating_score_check',
       sql`(score >= (0.0)::double precision) AND (score <= (5.0)::double precision)`,
     ),
   ],
