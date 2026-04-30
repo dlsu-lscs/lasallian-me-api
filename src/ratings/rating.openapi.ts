@@ -5,7 +5,6 @@ import {
   CreateRatingRequestSchema,
   PatchRatingRequestSchema,
   RatingResponseSchema,
-  UserRatingsParamsSchema,
   UserRatingsResponseSchema,
 } from './dto/index.js';
 
@@ -14,7 +13,6 @@ const authenticatedUserSecurity: Array<Record<string, string[]>> = [
 ];
 
 registry.register('ApplicationRatingsParams', ApplicationRatingParamsSchema);
-registry.register('UserRatingsParams', UserRatingsParamsSchema);
 registry.register('CreateRatingRequest', CreateRatingRequestSchema);
 registry.register('PatchRatingRequest', PatchRatingRequestSchema);
 
@@ -65,13 +63,11 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
-  path: '/api/ratings/users/{userId}',
-  description: 'Get all ratings for a user',
-  summary: 'Get user ratings',
+  path: '/api/ratings/me',
+  description: 'Get all ratings for the authenticated user',
+  summary: 'Get my ratings',
+  security: authenticatedUserSecurity,
   tags: ['Ratings'],
-  request: {
-    params: UserRatingsParamsSchema,
-  },
   responses: {
     200: {
       description: 'Successfully retrieved user ratings',

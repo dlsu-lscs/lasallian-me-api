@@ -11,7 +11,6 @@ import {
   CreateRatingRequestSchema,
   PatchRatingRequestSchema,
   RatingResponseSchema,
-  UserRatingsParamsSchema,
   UserRatingsResponseSchema,
 } from './dto/index.js';
 import type { IRatingService } from './rating.service.js';
@@ -46,7 +45,7 @@ export default class RatingController {
   };
 
   getUserRatings = async (req: Request, res: Response): Promise<void> => {
-    const { userId } = UserRatingsParamsSchema.parse(req.params);
+    const userId = this.getAuthenticatedUserId(res);
 
     logger.debug('Fetching user ratings', { userId });
 
