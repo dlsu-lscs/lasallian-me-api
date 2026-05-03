@@ -1,0 +1,1 @@
+ALTER TABLE "application" ALTER COLUMN "github_link" SET DEFAULT '';
