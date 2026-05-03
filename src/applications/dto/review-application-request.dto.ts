@@ -5,7 +5,7 @@ import { z } from '@/shared/config/openapi.js';
  */
 export const ReviewApplicationRequestSchema = z
   .object({
-    isApproved: z.enum(['APPROVED', 'REJECTED', 'REMOVED']).openapi({
+    status: z.enum(['APPROVED', 'REJECTED', 'REMOVED']).openapi({
       example: 'REJECTED',
       description: 'New application moderation state',
     }),
@@ -16,7 +16,7 @@ export const ReviewApplicationRequestSchema = z
   })
   .superRefine((value, ctx) => {
     if (
-      (value.isApproved === 'REJECTED' || value.isApproved === 'REMOVED') &&
+      (value.status === 'REJECTED' || value.status === 'REMOVED') &&
       !value.rejectionReason
     ) {
       ctx.addIssue({
@@ -26,7 +26,7 @@ export const ReviewApplicationRequestSchema = z
       });
     }
 
-    if (value.isApproved === 'APPROVED' && value.rejectionReason != null) {
+    if (value.status === 'APPROVED' && value.rejectionReason != null) {
       ctx.addIssue({
         code: 'custom',
         path: ['rejectionReason'],

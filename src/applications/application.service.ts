@@ -49,6 +49,7 @@ export interface IApplicationService {
   ): Promise<void>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
+  getUserByApplicationId(appId: number): Promise<{ id: string; email: string }>;
 }
 
 export default class ApplicationService implements IApplicationService {
@@ -63,7 +64,7 @@ export default class ApplicationService implements IApplicationService {
       limit,
       page,
       filters,
-      eq(application.isApproved, 'APPROVED'),
+      eq(application.status, 'APPROVED'),
     );
   };
 
@@ -73,11 +74,11 @@ export default class ApplicationService implements IApplicationService {
     filters?: AdminApplicationsListFilters,
   ): Promise<ApplicationsListResponse> => {
     const statusCondition = filters?.status
-      ? eq(application.isApproved, filters.status)
+      ? eq(application.status, filters.status)
       : or(
-          eq(application.isApproved, 'PENDING'),
-          eq(application.isApproved, 'REJECTED'),
-          eq(application.isApproved, 'REMOVED'),
+          eq(application.status, 'PENDING'),
+          eq(application.status, 'REJECTED'),
+          eq(application.status, 'REMOVED'),
         )!;
 
     return this.getFilteredApplications(limit, page, filters, statusCondition);
@@ -193,7 +194,7 @@ export default class ApplicationService implements IApplicationService {
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
-      .where(and(eq(application.slug, slug), eq(application.isApproved, 'APPROVED')))
+      .where(and(eq(application.slug, slug), eq(application.status, 'APPROVED')))
       .groupBy(application.id, user.email)
       .limit(1);
 
@@ -216,7 +217,7 @@ export default class ApplicationService implements IApplicationService {
     await this.db.insert(application).values({
       ...app,
       userId: actorUserId,
-      isApproved: 'PENDING',
+      status: 'PENDING',
       rejectionReason: null,
     });
 
@@ -272,7 +273,7 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
-    if (existing.isApproved === 'APPROVED' && input.isApproved !== 'REMOVED') {
+    if (existing.status === 'APPROVED' && input.status !== 'REMOVED') {
       throw new HttpError(
         409,
         'Approved applications can only transition to REMOVED',
@@ -281,7 +282,7 @@ export default class ApplicationService implements IApplicationService {
     }
 
     if (
-      (input.isApproved === 'REJECTED' || input.isApproved === 'REMOVED') &&
+      (input.status === 'REJECTED' || input.status === 'REMOVED') &&
       !input.rejectionReason
     ) {
       throw new HttpError(
@@ -291,7 +292,7 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    if (input.isApproved === 'APPROVED' && input.rejectionReason != null) {
+    if (input.status === 'APPROVED' && input.rejectionReason != null) {
       throw new HttpError(
         400,
         'Rejection reason must be null when approving an application',
@@ -302,9 +303,9 @@ export default class ApplicationService implements IApplicationService {
     await this.db
       .update(application)
       .set({
-        isApproved: input.isApproved,
+        status: input.status,
         rejectionReason:
-          input.isApproved === 'REJECTED' || input.isApproved === 'REMOVED'
+          input.status === 'REJECTED' || input.status === 'REMOVED'
             ? input.rejectionReason
             : null,
       })
@@ -314,9 +315,6 @@ export default class ApplicationService implements IApplicationService {
     return;
   };
 
-  /**
-   * Delete an application owned by the authenticated user
-   */
   deleteApplicationById = async (id: number, actorUserId: string): Promise<void> => {
     const [deleted] = await this.db
       .delete(application)
@@ -338,6 +336,16 @@ export default class ApplicationService implements IApplicationService {
 
     return;
   };
+
+  getUserByApplicationId = async (appId: number): Promise<{ id: string; email: string }> => {
+    const [result] = await this.db
+      .select({ id: user.id, email: user.email })
+      .from(application)
+      .innerJoin(user, eq(application.userId, user.id))
+      .where(eq(application.id, appId))
+      .limit(1);
+    return result;
+  }
 
   private slugExists = async (slug: string): Promise<boolean> => {
     const [result] = await this.db

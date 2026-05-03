@@ -19,7 +19,7 @@ export const ApplicationResponseSchema = z
       .array(z.string())
       .nullable()
       .openapi({ example: ['web', 'mobile'] }),
-    isApproved: z
+    status: z
       .enum(['PENDING', 'APPROVED', 'REJECTED', 'REMOVED'])
       .openapi({ example: 'APPROVED' }),
     rejectionReason: z.string().nullable().openapi({ example: null }),

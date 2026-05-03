@@ -51,10 +51,10 @@ export const application = pgTable(
     userId: text('user_id').notNull(),
     description: text(),
     url: text(),
-    githubLink: text('github_link').notNull(),
+    githubLink: text('github_link').notNull().default(''),
     previewImages: text('preview_images').array(),
     tags: varchar({ length: 50 }).array(),
-    isApproved: applicationApprovalStatus('is_approved').default('PENDING').notNull(),
+    status: applicationApprovalStatus('status').default('PENDING').notNull(),
     rejectionReason: text('rejection_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -67,7 +67,7 @@ export const application = pgTable(
     index('application_created_at_idx').on(table.createdAt),
     index('application_updated_at_idx').on(table.updatedAt),
     index('application_title_idx').on(table.title),
-    index('application_is_approved_idx').on(table.isApproved),
+    index('application_status_idx').on(table.status),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],

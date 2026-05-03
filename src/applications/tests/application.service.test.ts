@@ -63,7 +63,7 @@ describe('ApplicationService', () => {
         githubLink: 'https://github.com/test/test-app',
         tags: ['test'],
         userId: testUserId,
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
         ...overrides,
       })
@@ -170,7 +170,7 @@ describe('ApplicationService', () => {
         githubLink: 'https://github.com/test/test-app',
         tags: [],
         userId: testUserId,
-        isApproved: 'APPROVED' as const,
+        status: 'APPROVED' as const,
         rejectionReason: null,
       }));
       await db.insert(application).values(apps);
@@ -203,8 +203,8 @@ describe('ApplicationService', () => {
     });
 
     it('should only return approved applications', async () => {
-      await createTestApp({ slug: 'approved-app', isApproved: 'APPROVED' });
-      await createTestApp({ slug: 'pending-app', isApproved: 'PENDING' });
+      await createTestApp({ slug: 'approved-app', status: 'APPROVED' });
+      await createTestApp({ slug: 'pending-app', status: 'PENDING' });
 
       const result = await service.getPaginatedApplications(10, 1);
 
@@ -221,7 +221,7 @@ describe('ApplicationService', () => {
     });
 
     it('should throw 404 when slug exists but application is not approved', async () => {
-      await createTestApp({ slug: 'pending-slug', isApproved: 'PENDING' });
+      await createTestApp({ slug: 'pending-slug', status: 'PENDING' });
 
       await expect(service.getApplicationBySlug('pending-slug')).rejects.toThrow(HttpError);
     });
@@ -312,75 +312,75 @@ describe('ApplicationService', () => {
   describe('reviewAdminApplicationById', () => {
     it('should approve a pending application and clear rejection reason', async () => {
       const app = await createTestApp({
-        isApproved: 'PENDING',
+        status: 'PENDING',
         rejectionReason: 'legacy reason',
       });
 
       await service.reviewAdminApplicationById(app.id, {
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.isApproved).toBe('APPROVED');
+      expect(reviewed.status).toBe('APPROVED');
       expect(reviewed.rejectionReason).toBeNull();
     });
 
     it('should reject a pending application with rejection reason', async () => {
-      const app = await createTestApp({ isApproved: 'PENDING' });
+      const app = await createTestApp({ status: 'PENDING' });
 
       await service.reviewAdminApplicationById(app.id, {
-        isApproved: 'REJECTED',
+        status: 'REJECTED',
         rejectionReason: 'Missing details',
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.isApproved).toBe('REJECTED');
+      expect(reviewed.status).toBe('REJECTED');
       expect(reviewed.rejectionReason).toBe('Missing details');
     });
 
     it('should approve a rejected application when admin changes mind', async () => {
       const app = await createTestApp({
-        isApproved: 'REJECTED',
+        status: 'REJECTED',
         rejectionReason: 'Initial rejection',
       });
 
       await service.reviewAdminApplicationById(app.id, {
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.isApproved).toBe('APPROVED');
+      expect(reviewed.status).toBe('APPROVED');
       expect(reviewed.rejectionReason).toBeNull();
     });
 
     it('should remove an approved application during admin review', async () => {
       const app = await createTestApp({
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
       });
 
       await service.reviewAdminApplicationById(app.id, {
-        isApproved: 'REMOVED',
+        status: 'REMOVED',
         rejectionReason: 'Removed after admin review',
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.isApproved).toBe('REMOVED');
+      expect(reviewed.status).toBe('REMOVED');
       expect(reviewed.rejectionReason).toBe('Removed after admin review');
     });
 
     it('should throw 400 when rejecting without rejection reason', async () => {
-      const app = await createTestApp({ isApproved: 'PENDING' });
+      const app = await createTestApp({ status: 'PENDING' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          isApproved: 'REJECTED',
+          status: 'REJECTED',
           rejectionReason: null,
         }),
       ).rejects.toMatchObject({
@@ -390,11 +390,11 @@ describe('ApplicationService', () => {
     });
 
     it('should throw 400 when removing without rejection reason', async () => {
-      const app = await createTestApp({ isApproved: 'APPROVED' });
+      const app = await createTestApp({ status: 'APPROVED' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          isApproved: 'REMOVED',
+          status: 'REMOVED',
           rejectionReason: null,
         }),
       ).rejects.toMatchObject({
@@ -404,11 +404,11 @@ describe('ApplicationService', () => {
     });
 
     it('should throw 400 when approving with non-null rejection reason', async () => {
-      const app = await createTestApp({ isApproved: 'PENDING' });
+      const app = await createTestApp({ status: 'PENDING' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          isApproved: 'APPROVED',
+          status: 'APPROVED',
           rejectionReason: 'should be null',
         }),
       ).rejects.toMatchObject({
@@ -418,11 +418,11 @@ describe('ApplicationService', () => {
     });
 
     it('should throw 409 when approved application is reviewed to non-removed status', async () => {
-      const app = await createTestApp({ isApproved: 'APPROVED' });
+      const app = await createTestApp({ status: 'APPROVED' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          isApproved: 'REJECTED',
+          status: 'REJECTED',
           rejectionReason: 'late rejection',
         }),
       ).rejects.toMatchObject({
@@ -434,7 +434,7 @@ describe('ApplicationService', () => {
     it('should throw 404 when application is not found', async () => {
       await expect(
         service.reviewAdminApplicationById(99999, {
-          isApproved: 'APPROVED',
+          status: 'APPROVED',
           rejectionReason: null,
         }),
       ).rejects.toMatchObject({
