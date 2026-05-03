@@ -1,5 +1,10 @@
-import type { SelectApplication } from './application.model.js';
-import type { ApplicationsListFilters } from './dto/index.js';
+import type {
+  ApplicationResponse,
+  ApplicationsListFilters,
+  ApplicationsListResponse,
+  CreateApplicationRequest,
+  PatchApplicationRequest,
+} from './dto/index.js';
 import type { AdminApplicationsListFilters } from './dto/admin-applications-list-query.dto.js';
 import {
   eq,
@@ -19,44 +24,31 @@ import {
 } from 'drizzle-orm';
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import type { CreateApplicationInput, PatchApplicationInput } from './application.controller.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { userFavorite, application, user } from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
-
-export type ApplicationListItem = SelectApplication & {
-  favoritesCount: number;
-  userEmail: string;
-};
-
-export type ApplicationsList = {
-  data: ApplicationListItem[];
-  total: number;
-};
+import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
 
 export interface IApplicationService {
   getPaginatedApplications(
     limit: number,
     page: number,
     filters?: ApplicationsListFilters,
-  ): Promise<ApplicationsList>;
+  ): Promise<ApplicationsListResponse>;
   getAdminApplications(
     limit: number,
     page: number,
     filters?: AdminApplicationsListFilters,
-  ): Promise<ApplicationsList>;
-  getApplicationBySlug(slug: string): Promise<ApplicationListItem>;
-  createApplication(app: CreateApplicationInput, actorUserId: string): Promise<SelectApplication>;
+  ): Promise<ApplicationsListResponse>;
+  getApplicationBySlug(slug: string): Promise<ApplicationResponse>;
+  createApplication(app: CreateApplicationRequest, actorUserId: string): Promise<void>;
   patchApplicationById(
     id: number,
-    updates: PatchApplicationInput,
+    updates: PatchApplicationRequest,
     actorUserId: string,
-  ): Promise<SelectApplication>;
-  reviewAdminApplicationById(
-    id: number,
-    input: ReviewApplicationRequest,
-  ): Promise<SelectApplication>;
-  deleteApplicationById(id: number, actorUserId: string): Promise<SelectApplication>;
+  ): Promise<void>;
+  reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
+  deleteApplicationById(id: number, actorUserId: string): Promise<void>;
 }
 
 export default class ApplicationService implements IApplicationService {
@@ -66,7 +58,7 @@ export default class ApplicationService implements IApplicationService {
     limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT,
     page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE,
     filters?: ApplicationsListFilters,
-  ): Promise<ApplicationsList> => {
+  ): Promise<ApplicationsListResponse> => {
     return this.getFilteredApplications(
       limit,
       page,
@@ -79,7 +71,7 @@ export default class ApplicationService implements IApplicationService {
     limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT,
     page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE,
     filters?: AdminApplicationsListFilters,
-  ): Promise<ApplicationsList> => {
+  ): Promise<ApplicationsListResponse> => {
     const statusCondition = filters?.status
       ? eq(application.isApproved, filters.status)
       : or(
@@ -96,7 +88,7 @@ export default class ApplicationService implements IApplicationService {
     page: number,
     filters: ApplicationsListFilters | AdminApplicationsListFilters | undefined,
     statusCondition: SQL,
-  ): Promise<ApplicationsList> => {
+  ): Promise<ApplicationsListResponse> => {
     if (limit < 1 || page < 1) {
       throw new HttpError(400, 'Limit and page must be positive numbers', 'VALIDATION_ERROR');
     }
@@ -158,10 +150,9 @@ export default class ApplicationService implements IApplicationService {
 
     const whereClause = and(...conditions);
 
-    const [{ value: total }] = await this.db
-      .select({ value: count() })
-      .from(application)
-      .where(whereClause);
+    const [value] = await this.db.select({ value: count() }).from(application).where(whereClause);
+
+    const total = value.value;
 
     const data = await this.db
       .select({
@@ -178,10 +169,21 @@ export default class ApplicationService implements IApplicationService {
       .limit(safeLimit)
       .offset(offset);
 
-    return { data, total };
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit: limit,
+        count: data.length,
+        total,
+        totalPages,
+      },
+    };
   };
 
-  getApplicationBySlug = async (slug: string): Promise<ApplicationListItem> => {
+  getApplicationBySlug = async (slug: string): Promise<ApplicationResponse> => {
     const [result] = await this.db
       .select({
         ...getColumns(application),
@@ -202,10 +204,7 @@ export default class ApplicationService implements IApplicationService {
     return result;
   };
 
-  createApplication = async (
-    app: CreateApplicationInput,
-    actorUserId: string,
-  ): Promise<SelectApplication> => {
+  createApplication = async (app: CreateApplicationRequest, actorUserId: string): Promise<void> => {
     if (!(await this.userExists(actorUserId))) {
       throw new HttpError(404, 'User not found', 'NOT_FOUND');
     }
@@ -214,60 +213,46 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(409, 'Application with this slug already exists', 'DUPLICATE_SLUG');
     }
 
-    const [created] = await this.db
-      .insert(application)
-      .values({
-        ...app,
-        userId: actorUserId,
-        isApproved: 'PENDING',
-        rejectionReason: null,
-      })
-      .returning();
+    await this.db.insert(application).values({
+      ...app,
+      userId: actorUserId,
+      isApproved: 'PENDING',
+      rejectionReason: null,
+    });
 
-    return created;
+    return;
   };
 
   patchApplicationById = async (
     id: number,
-    updates: PatchApplicationInput,
+    updates: PatchApplicationRequest,
     actorUserId: string,
-  ): Promise<SelectApplication> => {
+  ): Promise<void> => {
     if (Object.keys(updates).length === 0) {
-      return this.assertOwnership(id, actorUserId);
+      await this.assertOwnership(id, actorUserId);
+      return;
     }
+    let patched: { id: number } | undefined;
 
-    if (updates.slug) {
-      const [existingWithSlug] = await this.db
-        .select({ id: application.id })
-        .from(application)
-        .where(eq(application.slug, updates.slug))
-        .limit(1);
+    try {
+      [patched] = await this.db
+        .update(application)
+        .set(updates)
+        .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
+        .returning({ id: application.id });
+    } catch (error) {
+      const { message, constraint } = getDbErrorMessage(error);
 
-      if (existingWithSlug && existingWithSlug.id !== id) {
-        throw new HttpError(409, 'Application with this slug already exists', 'DUPLICATE_SLUG');
-      }
+      console.error('Database operation failed:', { message, constraint, originalError: error });
+
+      throw new HttpError(409, 'Application with this slug already exists', 'DUPLICATE_SLUG');
     }
-
-    const [patched] = await this.db
-      .update(application)
-      .set(updates)
-      .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
-      .returning();
 
     if (!patched) {
-      const [exists] = await this.db
-        .select({ id: application.id })
-        .from(application)
-        .where(eq(application.id, id))
-        .limit(1);
-
-      if (exists) {
-        throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
-      }
-      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+      await this.assertOwnership(id, actorUserId);
     }
 
-    return patched;
+    return;
   };
 
   /**
@@ -276,7 +261,7 @@ export default class ApplicationService implements IApplicationService {
   reviewAdminApplicationById = async (
     id: number,
     input: ReviewApplicationRequest,
-  ): Promise<SelectApplication> => {
+  ): Promise<void> => {
     const [existing] = await this.db
       .select()
       .from(application)
@@ -314,7 +299,7 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    const [reviewed] = await this.db
+    await this.db
       .update(application)
       .set({
         isApproved: input.isApproved,
@@ -326,13 +311,13 @@ export default class ApplicationService implements IApplicationService {
       .where(eq(application.id, id))
       .returning();
 
-    return reviewed;
+    return;
   };
 
   /**
    * Delete an application owned by the authenticated user
    */
-  deleteApplicationById = async (id: number, actorUserId: string): Promise<SelectApplication> => {
+  deleteApplicationById = async (id: number, actorUserId: string): Promise<void> => {
     const [deleted] = await this.db
       .delete(application)
       .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
@@ -351,7 +336,7 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
-    return deleted;
+    return;
   };
 
   private slugExists = async (slug: string): Promise<boolean> => {
@@ -374,15 +359,11 @@ export default class ApplicationService implements IApplicationService {
     return !!result;
   };
 
-  private assertOwnership = async (
-    applicationId: number,
-    actorUserId: string,
-  ): Promise<SelectApplication> => {
+  private assertOwnership = async (applicationId: number, actorUserId: string): Promise<void> => {
     const [app] = await this.db
       .select()
       .from(application)
-      .where(eq(application.id, applicationId))
-      .limit(1);
+      .where(eq(application.id, applicationId));
 
     if (!app) {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
@@ -392,6 +373,6 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
     }
 
-    return app;
+    return;
   };
 }

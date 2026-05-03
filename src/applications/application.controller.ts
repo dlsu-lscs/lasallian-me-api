@@ -7,20 +7,12 @@ import {
   CreateApplicationRequestSchema,
   PatchApplicationRequestSchema,
   ReviewApplicationRequestSchema,
-  ApplicationListItemResponseSchema,
   ApplicationsListResponseSchema,
   ApplicationResponseSchema,
 } from './dto/index.js';
 import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import type { InsertApplication } from './application.model.js';
-
-export type CreateApplicationInput = Pick<
-  InsertApplication,
-  'title' | 'slug' | 'description' | 'url' | 'previewImages' | 'tags'
->;
-export type PatchApplicationInput = Partial<CreateApplicationInput>;
 
 export class ApplicationController {
   constructor(private applicationService: IApplicationService) {}
@@ -34,29 +26,18 @@ export class ApplicationController {
 
     logger.debug('Fetching applications', { limit, page, filters });
 
-    const { data, total } = await this.applicationService.getPaginatedApplications(
+    const response = await this.applicationService.getPaginatedApplications(
       limit,
       page,
       filters,
     );
 
     logger.info('Applications retrieved successfully', {
-      count: data.length,
-      total,
+      count: response.data.length,
+      total: response.meta.total,
       page,
       limit,
     });
-
-    const response = {
-      data,
-      meta: {
-        page,
-        limit,
-        count: data.length,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
 
     const parsed = ApplicationsListResponseSchema.parse(response);
     res.status(200).json(parsed);
@@ -71,29 +52,18 @@ export class ApplicationController {
 
     logger.debug('Fetching admin applications', { limit, page, filters });
 
-    const { data, total } = await this.applicationService.getAdminApplications(
+    const response = await this.applicationService.getAdminApplications(
       limit,
       page,
       filters,
     );
 
     logger.info('Admin applications retrieved successfully', {
-      count: data.length,
-      total,
+      count: response.data.length,
+      total: response.meta.total,
       page,
       limit,
     });
-
-    const response = {
-      data,
-      meta: {
-        page,
-        limit,
-        count: data.length,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
 
     const parsed = ApplicationsListResponseSchema.parse(response);
     res.status(200).json(parsed);
@@ -115,7 +85,7 @@ export class ApplicationController {
       slug: application.slug,
     });
 
-    const parsed = ApplicationListItemResponseSchema.parse(application);
+    const parsed = ApplicationResponseSchema.parse(application);
     res.status(200).json(parsed);
   };
 
@@ -128,15 +98,14 @@ export class ApplicationController {
 
     logger.debug('Creating application', { slug: body.slug });
 
-    const application = await this.applicationService.createApplication(body, authUserId);
+    await this.applicationService.createApplication(body, authUserId);
 
     logger.info('Application created successfully', {
-      applicationId: application.id,
-      slug: application.slug,
+      applicationId: authUserId,
+      slug: body.slug,
     });
 
-    const parsed = ApplicationResponseSchema.parse(application);
-    res.status(201).json(parsed);
+    res.status(201).json({ slug: body.slug });
   };
 
   /**
@@ -150,15 +119,14 @@ export class ApplicationController {
 
     logger.debug('Patching application', { id, updates: body });
 
-    const application = await this.applicationService.patchApplicationById(id, body, authUserId);
+    await this.applicationService.patchApplicationById(id, body, authUserId);
 
     logger.info('Application patched successfully', {
-      applicationId: application.id,
-      slug: application.slug,
+      applicationId: authUserId,
+      slug: body.slug,
     });
 
-    const parsed = ApplicationResponseSchema.parse(application);
-    res.status(200).json(parsed);
+    res.status(200).json({ slug: body.slug });
   };
 
   /**
@@ -171,15 +139,14 @@ export class ApplicationController {
 
     logger.debug('Deleting application', { id });
 
-    const application = await this.applicationService.deleteApplicationById(id, authUserId);
+    await this.applicationService.deleteApplicationById(id, authUserId);
 
     logger.info('Application deleted successfully', {
-      applicationId: application.id,
-      slug: application.slug,
+      applicationId: authUserId,
+      id: id,
     });
 
-    const parsed = ApplicationResponseSchema.parse(application);
-    res.status(200).json(parsed);
+    res.status(204).send();
   };
 
   /**
@@ -192,15 +159,14 @@ export class ApplicationController {
 
     logger.debug('Reviewing application', { id, decision: body.isApproved });
 
-    const application = await this.applicationService.reviewAdminApplicationById(id, body);
+    await this.applicationService.reviewAdminApplicationById(id, body);
 
     logger.info('Application reviewed successfully', {
-      applicationId: application.id,
-      status: application.isApproved,
+      applicationId: id,
+      status: body.isApproved,
     });
 
-    const parsed = ApplicationResponseSchema.parse(application);
-    res.status(200).json(parsed);
+    res.status(204).send();
   };
 
   private getAuthUserId(res: Response): string {

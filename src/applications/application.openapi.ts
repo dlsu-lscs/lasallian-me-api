@@ -1,16 +1,21 @@
-import { registry, ErrorResponseSchema } from '@/shared/config/openapi.js';
+import { registry, ErrorResponseSchema, z } from '@/shared/config/openapi.js';
 import {
   ApplicationsListQuerySchema,
   AdminApplicationsListQuerySchema,
   ApplicationSlugParamsSchema,
   ApplicationResponseSchema,
-  ApplicationListItemResponseSchema,
   CreateApplicationRequestSchema,
   ApplicationIdParamsSchema,
   PatchApplicationRequestSchema,
   ReviewApplicationRequestSchema,
   ApplicationsListResponseSchema,
 } from './dto/index.js';
+
+const ApplicationSlugResponseSchema = z
+  .object({
+    slug: z.string().openapi({ example: 'my-awesome-app' }),
+  })
+  .openapi('ApplicationSlugResponse');
 
 /**
  * Register the GET /api/applications endpoint
@@ -69,7 +74,7 @@ registry.registerPath({
       description: 'Successfully retrieved application',
       content: {
         'application/json': {
-          schema: ApplicationListItemResponseSchema,
+          schema: ApplicationResponseSchema,
         },
       },
     },
@@ -181,7 +186,7 @@ registry.registerPath({
       description: 'Successfully created application',
       content: {
         'application/json': {
-          schema: ApplicationResponseSchema,
+          schema: ApplicationSlugResponseSchema,
         },
       },
     },
@@ -245,7 +250,7 @@ registry.registerPath({
       description: 'Successfully updated application',
       content: {
         'application/json': {
-          schema: ApplicationResponseSchema,
+          schema: ApplicationSlugResponseSchema,
         },
       },
     },
@@ -322,13 +327,8 @@ registry.registerPath({
     },
   },
   responses: {
-    200: {
+    204: {
       description: 'Successfully reviewed application',
-      content: {
-        'application/json': {
-          schema: ApplicationResponseSchema,
-        },
-      },
     },
     400: {
       description: 'Invalid request data - VALIDATION_ERROR',
@@ -395,13 +395,8 @@ registry.registerPath({
     params: ApplicationIdParamsSchema,
   },
   responses: {
-    200: {
+    204: {
       description: 'Successfully deleted application',
-      content: {
-        'application/json': {
-          schema: ApplicationResponseSchema,
-        },
-      },
     },
     401: {
       description: 'Unauthorized - UNAUTHORIZED',

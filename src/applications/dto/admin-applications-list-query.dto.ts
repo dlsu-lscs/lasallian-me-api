@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import '@/shared/config/openapi.js';
+import { z } from '@/shared/config/openapi.js';
 import { ApplicationsListQuerySchema } from './applications-list-query.dto.js';
 
 /**
