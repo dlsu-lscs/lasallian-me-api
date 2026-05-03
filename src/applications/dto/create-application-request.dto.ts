@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import '@/shared/config/openapi.js';
+import { z } from '@/shared/config/openapi.js';
 export const CreateApplicationRequestSchema = z
   .object({
     title: z.string().trim().min(1, 'Title is required').openapi({ example: 'My Awesome App' }),
@@ -16,6 +15,7 @@ export const CreateApplicationRequestSchema = z
       .nullish()
       .openapi({ example: 'A description of the application' }),
     url: z.url('Invalid URL format').trim().nullish().openapi({ example: 'https://example.com' }),
+    githubLink: z.url('Invalid GitHub URL format').trim().openapi({ example: 'https://github.com/user/repo' }),
     previewImages: z
       .array(z.url('Invalid image URL').trim())
       .nullish()
@@ -24,7 +24,7 @@ export const CreateApplicationRequestSchema = z
       .array(z.string().trim().min(1))
       .nullish()
       .openapi({ example: ['web', 'mobile'] }),
-  })
+  }) 
   .openapi('CreateApplicationRequest');
 
 export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;

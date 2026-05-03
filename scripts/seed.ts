@@ -70,6 +70,7 @@ async function seedDatabase() {
           userId: funcs.valuesFromArray({ values: seededUserIds }),
           description: funcs.loremIpsum({ sentencesCount: 2 }),
           url: funcs.string(),
+          githubLink: funcs.string(),
           tags: funcs.valuesFromArray({
             values: ['web', 'mobile', 'api', 'ai', 'iot', 'design'],
             arraySize: 3,

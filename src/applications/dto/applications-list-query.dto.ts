@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import '@/shared/config/openapi.js';
+import { z } from '@/shared/config/openapi.js';
 import { APPLICATION_CONSTANTS } from '../application.constants.js';
 
 /**

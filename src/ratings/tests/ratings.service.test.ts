@@ -47,6 +47,7 @@ describe('RatingsService', () => {
         slug: 'ratings-app-one',
         userId: firstUser.id,
         isApproved: 'APPROVED',
+        githubLink: 'https://github.com/user/repo',
         rejectionReason: null,
       },
       {
@@ -54,6 +55,7 @@ describe('RatingsService', () => {
         slug: 'ratings-app-two',
         userId: firstUser.id,
         isApproved: 'APPROVED',
+        githubLink: 'https://github.com/user/repo',
         rejectionReason: null,
       },
     ]);

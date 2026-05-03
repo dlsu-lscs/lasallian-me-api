@@ -43,6 +43,7 @@ describe('FavoritesService', () => {
         userId: firstUserId,
         isApproved: 'APPROVED',
         rejectionReason: null,
+        githubLink: 'https://github.com/user/repo',
       },
       {
         title: 'Test App 2',
@@ -50,6 +51,7 @@ describe('FavoritesService', () => {
         userId: firstUserId,
         isApproved: 'APPROVED',
         rejectionReason: null,
+        githubLink: 'https://github.com/user/repo',
       },
     ]);
 
