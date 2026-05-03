@@ -4,7 +4,10 @@ import { db } from '@/shared/config/database.js';
 import * as schema from '@/shared/infrastructure/database/schema.js';
 import { openAPI, admin } from 'better-auth/plugins';
 
-const isProd = process.env.NODE_ENV === 'production'
+const isProd = process.env.NODE_ENV === 'production';
+const plugins = (isProd ? [admin()] : [openAPI(), admin()]) satisfies NonNullable<
+  Parameters<typeof betterAuth>[0]['plugins']
+>;
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -35,5 +38,8 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:3000'],
-  plugins: [...(!isProd ? [openAPI()] : []), admin()],
+  plugins,
 });
+
+
+export type Session = typeof auth.$Infer.Session
