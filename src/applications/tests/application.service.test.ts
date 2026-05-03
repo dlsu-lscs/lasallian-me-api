@@ -53,7 +53,6 @@ describe('ApplicationService', () => {
     await client.close();
   });
 
-  // Helper to create an app
   const createTestApp = async (overrides: Partial<InsertApplication> = {}) => {
     const [created] = await db
       .insert(application)
@@ -61,6 +60,7 @@ describe('ApplicationService', () => {
         slug: `test-app-${Math.random().toString(36).substring(7)}`,
         title: 'Test Application',
         description: 'A test application',
+        githubLink: 'https://github.com/test/test-app',
         tags: ['test'],
         userId: testUserId,
         isApproved: 'APPROVED',
@@ -87,9 +87,9 @@ describe('ApplicationService', () => {
       const result = await service.getPaginatedApplications(2, 1);
 
       expect(result).toHaveProperty('data');
-      expect(result).toHaveProperty('total');
+      expect(result).toHaveProperty('meta');
       expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.meta.total).toBe(2);
       expect(result.data[0]).toHaveProperty('userEmail');
     });
 
@@ -111,12 +111,63 @@ describe('ApplicationService', () => {
       expect(second?.favoritesCount).toBe(0);
     });
 
+    it('should filter by createdAfter only', async () => {
+      await createTestApp({ slug: 'created-after-old', createdAt: new Date('2020-01-01') });
+      await createTestApp({ slug: 'created-after-new', createdAt: new Date('2024-01-01') });
+
+      const result = await service.getPaginatedApplications(10, 1, {
+        createdAfter: new Date('2023-01-01'),
+      });
+
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0].slug).toBe('created-after-new');
+    });
+
+    it('should filter by createdBefore only', async () => {
+      await createTestApp({ slug: 'created-before-old', createdAt: new Date('2020-01-01') });
+      await createTestApp({ slug: 'created-before-new', createdAt: new Date('2024-01-01') });
+
+      const result = await service.getPaginatedApplications(10, 1, {
+        createdBefore: new Date('2021-01-01'),
+      });
+
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0].slug).toBe('created-before-old');
+    });
+
+    it('should filter by search and tags together', async () => {
+      await createTestApp({
+        slug: 'combo-match',
+        title: 'Combo Match App',
+        tags: ['combo'],
+      });
+      await createTestApp({
+        slug: 'combo-title-only',
+        title: 'Combo Match App',
+        tags: ['other'],
+      });
+      await createTestApp({
+        slug: 'combo-tag-only',
+        title: 'Other Title',
+        tags: ['combo'],
+      });
+
+      const result = await service.getPaginatedApplications(10, 1, {
+        search: 'Combo Match',
+        tags: ['combo'],
+      });
+
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0].slug).toBe('combo-match');
+    });
+
     it('should cap limit at MAX_LIMIT', async () => {
       // Insert 105 apps
       const apps = Array.from({ length: 105 }).map((_, i) => ({
         slug: `limit-test-${i}`,
         title: `App ${i}`,
         description: 'desc',
+        githubLink: 'https://github.com/test/test-app',
         tags: [],
         userId: testUserId,
         isApproved: 'APPROVED' as const,
@@ -128,7 +179,7 @@ describe('ApplicationService', () => {
       const result = await service.getPaginatedApplications(500, 1);
 
       expect(result.data).toHaveLength(100);
-      expect(result.total).toBe(105);
+      expect(result.meta.total).toBe(105);
     });
 
     it('should calculate correct offset for pagination', async () => {
@@ -186,18 +237,14 @@ describe('ApplicationService', () => {
         slug: 'new-unique-app',
         title: 'New Application',
         description: 'A new app',
+        githubLink: 'https://github.com/test/test-app',
         tags: ['new'],
       };
 
-      const result = await service.createApplication(newApp, testUserId);
-
-      expect(result.slug).toBe('new-unique-app');
-      expect(result.userId).toBe(testUserId);
-      expect(result.isApproved).toBe('PENDING');
-      expect(result.rejectionReason).toBeNull();
+      expect(await service.createApplication(newApp, testUserId)).toBeUndefined();
 
       // Verify in DB
-      const [inDb] = await db.select().from(application).where(eq(application.id, result.id));
+      const [inDb] = await db.select().from(application).where(eq(application.slug, newApp.slug));
       expect(inDb).toBeDefined();
     });
 
@@ -208,6 +255,7 @@ describe('ApplicationService', () => {
         slug: 'existing-slug',
         title: 'Duplicate',
         description: 'A new app',
+        githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
 
@@ -222,6 +270,7 @@ describe('ApplicationService', () => {
         slug: 'missing-user-app',
         title: 'Missing User',
         description: 'Should fail because authenticated user does not exist',
+        githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
 
@@ -236,8 +285,7 @@ describe('ApplicationService', () => {
     it('should delete application when it exists', async () => {
       const app = await createTestApp();
 
-      const result = await service.deleteApplicationById(app.id, testUserId);
-      expect(result.id).toBe(app.id);
+      expect(await service.deleteApplicationById(app.id, testUserId)).toBeUndefined();
 
       // Verify in DB
       const inDb = await db.select().from(application).where(eq(application.id, app.id));
@@ -268,10 +316,12 @@ describe('ApplicationService', () => {
         rejectionReason: 'legacy reason',
       });
 
-      const reviewed = await service.reviewAdminApplicationById(app.id, {
+      await service.reviewAdminApplicationById(app.id, {
         isApproved: 'APPROVED',
         rejectionReason: null,
       });
+
+      const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
       expect(reviewed.isApproved).toBe('APPROVED');
       expect(reviewed.rejectionReason).toBeNull();
@@ -280,10 +330,12 @@ describe('ApplicationService', () => {
     it('should reject a pending application with rejection reason', async () => {
       const app = await createTestApp({ isApproved: 'PENDING' });
 
-      const reviewed = await service.reviewAdminApplicationById(app.id, {
+      await service.reviewAdminApplicationById(app.id, {
         isApproved: 'REJECTED',
         rejectionReason: 'Missing details',
       });
+
+      const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
       expect(reviewed.isApproved).toBe('REJECTED');
       expect(reviewed.rejectionReason).toBe('Missing details');
@@ -295,10 +347,12 @@ describe('ApplicationService', () => {
         rejectionReason: 'Initial rejection',
       });
 
-      const reviewed = await service.reviewAdminApplicationById(app.id, {
+      await service.reviewAdminApplicationById(app.id, {
         isApproved: 'APPROVED',
         rejectionReason: null,
       });
+
+      const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
       expect(reviewed.isApproved).toBe('APPROVED');
       expect(reviewed.rejectionReason).toBeNull();
@@ -310,10 +364,12 @@ describe('ApplicationService', () => {
         rejectionReason: null,
       });
 
-      const reviewed = await service.reviewAdminApplicationById(app.id, {
+      await service.reviewAdminApplicationById(app.id, {
         isApproved: 'REMOVED',
         rejectionReason: 'Removed after admin review',
       });
+
+      const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
       expect(reviewed.isApproved).toBe('REMOVED');
       expect(reviewed.rejectionReason).toBe('Removed after admin review');
@@ -392,7 +448,9 @@ describe('ApplicationService', () => {
     it('should update application when it exists', async () => {
       const app = await createTestApp({ title: 'Old Title' });
 
-      const result = await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId);
+      await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId);
+
+      const result = await service.getApplicationBySlug(app.slug);
 
       expect(result.title).toBe('New Title');
 
@@ -425,11 +483,9 @@ describe('ApplicationService', () => {
     it('should allow updating to the same slug', async () => {
       const app = await createTestApp({ slug: 'my-slug', title: 'Old' });
 
-      const result = await service.patchApplicationById(
-        app.id,
-        { slug: 'my-slug', title: 'New' },
-        testUserId,
-      );
+      await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId);
+
+      const result = await service.getApplicationBySlug('my-slug');
 
       expect(result.title).toBe('New');
       expect(result.slug).toBe('my-slug');
@@ -438,11 +494,9 @@ describe('ApplicationService', () => {
     it('should allow partial updates', async () => {
       const app = await createTestApp({ title: 'Title', description: 'Desc' });
 
-      const result = await service.patchApplicationById(
-        app.id,
-        { description: 'New Desc' },
-        testUserId,
-      );
+      await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId);
+
+      const result = await service.getApplicationBySlug(app.slug);
 
       expect(result.description).toBe('New Desc');
       expect(result.title).toBe('Title');
@@ -462,7 +516,9 @@ describe('ApplicationService', () => {
     it('should return current application for empty patch', async () => {
       const app = await createTestApp({ title: 'Title' });
 
-      const result = await service.patchApplicationById(app.id, {}, testUserId);
+      await service.patchApplicationById(app.id, {}, testUserId);
+
+      const result = await service.getApplicationBySlug(app.slug);
 
       expect(result.id).toBe(app.id);
       expect(result.title).toBe('Title');
