@@ -23,7 +23,7 @@ const ApplicationSlugResponseSchema = z
 registry.registerPath({
   method: 'get',
   path: '/api/applications',
-  description: 'Get a paginated list of applications with optional filters and sorting',
+  description: 'Get a paginated list of approved applications with optional filters and sorting',
   summary: 'List applications',
   tags: ['Applications'],
   request: {

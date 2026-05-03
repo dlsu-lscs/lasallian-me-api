@@ -120,14 +120,14 @@ export class ApplicationController {
 
     logger.debug('Patching application', { id, updates: body });
 
-    await this.applicationService.patchApplicationById(id, body, authUserId);
+    const slug = await this.applicationService.patchApplicationById(id, body, authUserId);
 
     logger.info('Application patched successfully', {
       applicationId: authUserId,
-      slug: body.slug,
+      slug,
     });
 
-    res.status(200).json({ slug: body.slug });
+    res.status(200).json({ slug });
   };
 
   /**

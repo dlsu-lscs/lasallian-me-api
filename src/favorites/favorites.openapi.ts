@@ -153,6 +153,14 @@ registry.registerPath({
         },
       },
     },
+    404: {
+      description: 'User or application not found - NOT_FOUND',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
     400: {
       description: 'Invalid request body - VALIDATION_ERROR',
       content: {

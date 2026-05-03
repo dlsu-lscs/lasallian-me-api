@@ -46,7 +46,7 @@ export interface IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
-  ): Promise<void>;
+  ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
   getUserByApplicationId(appId: number): Promise<{ id: string; email: string }>;
@@ -228,19 +228,19 @@ export default class ApplicationService implements IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
-  ): Promise<void> => {
+  ): Promise<string> => {
     if (Object.keys(updates).length === 0) {
       await this.assertOwnership(id, actorUserId);
-      return;
+      return this.getApplicationSlugById(id);
     }
-    let patched: { id: number } | undefined;
+    let patched: { slug: string } | undefined;
 
     try {
       [patched] = await this.db
         .update(application)
         .set(updates)
         .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
-        .returning({ id: application.id });
+        .returning({ slug: application.slug });
     } catch (error) {
       const { message, constraint } = getDbErrorMessage(error);
 
@@ -251,9 +251,10 @@ export default class ApplicationService implements IApplicationService {
 
     if (!patched) {
       await this.assertOwnership(id, actorUserId);
+      return this.getApplicationSlugById(id);
     }
 
-    return;
+    return patched.slug;
   };
 
   /**
@@ -355,6 +356,20 @@ export default class ApplicationService implements IApplicationService {
       .limit(1);
 
     return !!result;
+  };
+
+  private getApplicationSlugById = async (applicationId: number): Promise<string> => {
+    const [result] = await this.db
+      .select({ slug: application.slug })
+      .from(application)
+      .where(eq(application.id, applicationId))
+      .limit(1);
+
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    return result.slug;
   };
 
   private userExists = async (userId: string): Promise<boolean> => {

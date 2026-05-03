@@ -11,6 +11,7 @@ export const ApplicationResponseSchema = z
     userId: z.string().openapi({ example: 'user_123' }),
     description: z.string().nullable().openapi({ example: 'A description of the application' }),
     url: z.string().nullable().openapi({ example: 'https://example.com' }),
+    githubLink: z.string().openapi({ example: 'https://github.com/user/repo' }),
     previewImages: z
       .array(z.string())
       .nullable()
