@@ -27,11 +27,7 @@ export class ApplicationController {
 
     logger.debug('Fetching applications', { limit, page, filters });
 
-    const response = await this.applicationService.getPaginatedApplications(
-      limit,
-      page,
-      filters,
-    );
+    const response = await this.applicationService.getPaginatedApplications(limit, page, filters);
 
     logger.info('Applications retrieved successfully', {
       count: response.data.length,
@@ -53,11 +49,7 @@ export class ApplicationController {
 
     logger.debug('Fetching admin applications', { limit, page, filters });
 
-    const response = await this.applicationService.getAdminApplications(
-      limit,
-      page,
-      filters,
-    );
+    const response = await this.applicationService.getAdminApplications(limit, page, filters);
 
     logger.info('Admin applications retrieved successfully', {
       count: response.data.length,
@@ -169,7 +161,7 @@ export class ApplicationController {
       `Your application has been ${body.status}`,
       `Dear Applicant,\n\nWe are writing to inform you that your application has been ${body.status}.\n\nThank you for your interest.\n\nBest regards,\nThe Team`,
     );
-    
+
     logger.info('Application reviewed successfully', {
       applicationId: id,
       status: body.status,

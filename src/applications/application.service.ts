@@ -60,12 +60,7 @@ export default class ApplicationService implements IApplicationService {
     page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE,
     filters?: ApplicationsListFilters,
   ): Promise<ApplicationsListResponse> => {
-    return this.getFilteredApplications(
-      limit,
-      page,
-      filters,
-      eq(application.status, 'APPROVED'),
-    );
+    return this.getFilteredApplications(limit, page, filters, eq(application.status, 'APPROVED'));
   };
 
   getAdminApplications = async (
@@ -282,10 +277,7 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    if (
-      (input.status === 'REJECTED' || input.status === 'REMOVED') &&
-      !input.rejectionReason
-    ) {
+    if ((input.status === 'REJECTED' || input.status === 'REMOVED') && !input.rejectionReason) {
       throw new HttpError(
         400,
         'Rejection reason is required when rejecting or removing an application',
@@ -306,9 +298,7 @@ export default class ApplicationService implements IApplicationService {
       .set({
         status: input.status,
         rejectionReason:
-          input.status === 'REJECTED' || input.status === 'REMOVED'
-            ? input.rejectionReason
-            : null,
+          input.status === 'REJECTED' || input.status === 'REMOVED' ? input.rejectionReason : null,
       })
       .where(eq(application.id, id))
       .returning();
@@ -346,7 +336,7 @@ export default class ApplicationService implements IApplicationService {
       .where(eq(application.id, appId))
       .limit(1);
     return result;
-  }
+  };
 
   private slugExists = async (slug: string): Promise<boolean> => {
     const [result] = await this.db
@@ -383,10 +373,7 @@ export default class ApplicationService implements IApplicationService {
   };
 
   private assertOwnership = async (applicationId: number, actorUserId: string): Promise<void> => {
-    const [app] = await this.db
-      .select()
-      .from(application)
-      .where(eq(application.id, applicationId));
+    const [app] = await this.db.select().from(application).where(eq(application.id, applicationId));
 
     if (!app) {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');

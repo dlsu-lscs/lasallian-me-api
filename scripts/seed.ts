@@ -75,7 +75,7 @@ async function seedDatabase() {
             values: ['web', 'mobile', 'api', 'ai', 'iot', 'design'],
             arraySize: 3,
           }),
-          isApproved: funcs.valuesFromArray({
+          status: funcs.valuesFromArray({
             values: ['APPROVED', 'PENDING', 'REJECTED', 'REMOVED'],
           }),
           rejectionReason: funcs.valuesFromArray({
