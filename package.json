@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "start": "node .",
-    "prestart": "npm run build",
+    "prestart": "pnpm run build",
     "dev": "tsx watch server.ts",
     "build": "tsc && tsc-alias",
     "lint": "eslint .",
