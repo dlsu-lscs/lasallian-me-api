@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import '@/shared/config/openapi.js';
+import { z } from '@/shared/config/openapi.js';
 
 /**
  * Zod schema for the application ID path parameter

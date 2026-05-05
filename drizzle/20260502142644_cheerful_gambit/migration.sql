@@ -1,0 +1,1 @@
+ALTER TABLE "application" ADD COLUMN "github_link" text NOT NULL;

@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import '@/shared/config/openapi.js';
+import { z } from '@/shared/config/openapi.js';
 
 /**
  * Base Response DTO for a single application
@@ -12,6 +11,7 @@ export const ApplicationResponseSchema = z
     userId: z.string().openapi({ example: 'user_123' }),
     description: z.string().nullable().openapi({ example: 'A description of the application' }),
     url: z.string().nullable().openapi({ example: 'https://example.com' }),
+    githubLink: z.string().openapi({ example: 'https://github.com/user/repo' }),
     previewImages: z
       .array(z.string())
       .nullable()
@@ -20,29 +20,23 @@ export const ApplicationResponseSchema = z
       .array(z.string())
       .nullable()
       .openapi({ example: ['web', 'mobile'] }),
-    isApproved: z
+    status: z
       .enum(['PENDING', 'APPROVED', 'REJECTED', 'REMOVED'])
       .openapi({ example: 'APPROVED' }),
     rejectionReason: z.string().nullable().openapi({ example: null }),
     createdAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
     updatedAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
+    userEmail: z.email().openapi({ example: 'user@example.com' }),
+    favoritesCount: z.number().int().nonnegative().openapi({ example: 12 }),
   })
   .openapi('ApplicationResponse');
-
-/**
- * Response DTO for a single application list item (includes joined relational data)
- */
-export const ApplicationListItemResponseSchema = ApplicationResponseSchema.extend({
-  userEmail: z.email().openapi({ example: 'user@example.com' }),
-  favoritesCount: z.number().int().nonnegative().openapi({ example: 12 }),
-}).openapi('ApplicationListItemResponse');
 
 /**
  * Response DTO for paginated applications list
  */
 export const ApplicationsListResponseSchema = z
   .object({
-    data: z.array(ApplicationListItemResponseSchema),
+    data: z.array(ApplicationResponseSchema),
     meta: z.object({
       page: z.number().openapi({ example: 1 }),
       limit: z.number().openapi({ example: 10 }),
@@ -54,5 +48,4 @@ export const ApplicationsListResponseSchema = z
   .openapi('ApplicationsListResponse');
 
 export type ApplicationResponse = z.infer<typeof ApplicationResponseSchema>;
-export type ApplicationListItemResponse = z.infer<typeof ApplicationListItemResponseSchema>;
 export type ApplicationsListResponse = z.infer<typeof ApplicationsListResponseSchema>;

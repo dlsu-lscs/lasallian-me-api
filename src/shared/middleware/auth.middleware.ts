@@ -1,7 +1,7 @@
 import cors from 'cors';
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import { auth } from '@/shared/auth/auth.config.js';
+import { auth, Session } from '@/shared/auth/auth.config.js';
 import { fromNodeHeaders } from 'better-auth/node';
 
 const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
@@ -52,7 +52,7 @@ export const requireRole = (...roles: string[]) => {
   };
 };
 
-export const getSession = async (req: Request) => {
+export const getSession = async (req: Request): Promise<Session | null>  => {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });

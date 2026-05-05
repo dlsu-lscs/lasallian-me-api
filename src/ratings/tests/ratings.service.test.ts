@@ -46,14 +46,16 @@ describe('RatingsService', () => {
         title: 'Ratings App One',
         slug: 'ratings-app-one',
         userId: firstUser.id,
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
+        githubLink: 'https://github.com/user/repo',
         rejectionReason: null,
       },
       {
         title: 'Ratings App Two',
         slug: 'ratings-app-two',
         userId: firstUser.id,
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
+        githubLink: 'https://github.com/user/repo',
         rejectionReason: null,
       },
     ]);

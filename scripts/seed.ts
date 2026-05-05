@@ -70,11 +70,12 @@ async function seedDatabase() {
           userId: funcs.valuesFromArray({ values: seededUserIds }),
           description: funcs.loremIpsum({ sentencesCount: 2 }),
           url: funcs.string(),
+          githubLink: funcs.string(),
           tags: funcs.valuesFromArray({
             values: ['web', 'mobile', 'api', 'ai', 'iot', 'design'],
             arraySize: 3,
           }),
-          isApproved: funcs.valuesFromArray({
+          status: funcs.valuesFromArray({
             values: ['APPROVED', 'PENDING', 'REJECTED', 'REMOVED'],
           }),
           rejectionReason: funcs.valuesFromArray({

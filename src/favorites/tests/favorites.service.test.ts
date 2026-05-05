@@ -41,15 +41,17 @@ describe('FavoritesService', () => {
         title: 'Test App 1',
         slug: 'test-app-1',
         userId: firstUserId,
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
+        githubLink: 'https://github.com/user/repo',
       },
       {
         title: 'Test App 2',
         slug: 'test-app-2',
         userId: firstUserId,
-        isApproved: 'APPROVED',
+        status: 'APPROVED',
         rejectionReason: null,
+        githubLink: 'https://github.com/user/repo',
       },
     ]);
 
