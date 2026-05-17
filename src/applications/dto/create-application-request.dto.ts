@@ -16,6 +16,7 @@ export const CreateApplicationRequestSchema = z
       .openapi({ example: 'A description of the application' }),
     url: z.url('Invalid URL format').trim().nullish().openapi({ example: 'https://example.com' }),
     githubLink: z.url('Invalid GitHub URL format').trim().openapi({ example: 'https://github.com/user/repo' }),
+    author: z.string().trim().max(255).nullish().openapi({ example: 'Jane Doe' }),
     previewImages: z
       .array(z.url('Invalid image URL').trim())
       .nullish()
