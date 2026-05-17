@@ -8,6 +8,7 @@ export const RatingResponseSchema = z
     comment: z.string().nullable().openapi({ example: 'Highly recommended' }),
     isAnonymous: z.coerce.boolean().openapi({ example: false }),
     userEmail: z.email().nullable().openapi({ example: 'user@example.com' }),
+    userName: z.string().nullable().openapi({ example: 'Jane Doe' }),
   })
   .openapi('RatingResponse');
 
