@@ -10,8 +10,8 @@ export const ApplicationResponseSchema = z
     slug: z.string().openapi({ example: 'my-awesome-app' }),
     userId: z.string().openapi({ example: 'user_123' }),
     description: z.string().nullable().openapi({ example: 'A description of the application' }),
-    url: z.string().nullable().openapi({ example: 'https://example.com' }),
-    githubLink: z.string().openapi({ example: 'https://github.com/user/repo' }),
+    url: z.string().openapi({ example: 'https://example.com' }),
+    githubLink: z.string().nullable().openapi({ example: 'https://github.com/user/repo' }),
     author: z.string().nullable().openapi({ example: 'Jane Doe' }),
     previewImages: z
       .array(z.string())
