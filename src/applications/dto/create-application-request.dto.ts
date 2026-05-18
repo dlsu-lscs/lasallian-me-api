@@ -21,6 +21,12 @@ export const CreateApplicationRequestSchema = z
       .array(z.url('Invalid image URL').trim())
       .nullish()
       .openapi({ example: ['https://example.com/image1.jpg'] }),
+    icon: z
+      .string()
+      .url('Invalid icon URL')
+      .trim()
+      .nullish()
+      .openapi({ example: 'https://example.com/icon.jpg' }),
     tags: z
       .array(z.string().trim().min(1))
       .nullish()
