@@ -54,6 +54,7 @@ export const application = pgTable(
     githubLink: text('github_link'),
     author: varchar({ length: 255 }),
     previewImages: text('preview_images').array(),
+    icon: text('icon'),
     tags: varchar({ length: 50 }).array(),
     status: applicationApprovalStatus('status').default('PENDING').notNull(),
     rejectionReason: text('rejection_reason'),

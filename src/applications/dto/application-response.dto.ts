@@ -17,6 +17,7 @@ export const ApplicationResponseSchema = z
       .array(z.string())
       .nullable()
       .openapi({ example: ['https://example.com/image1.jpg'] }),
+    icon: z.string().nullable().openapi({ example: 'https://example.com/icon.jpg' }),
     tags: z
       .array(z.string())
       .nullable()
