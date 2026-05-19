@@ -92,7 +92,7 @@ export default class MemberService implements IMemberService {
         // DISTINCT CASE WHEN deduplicates application.id per-status before counting
         pendingCount:  sql<number>`count(distinct case when ${application.status} = 'PENDING'  then ${application.id} end)::int`,
         approvedCount: sql<number>`count(distinct case when ${application.status} = 'APPROVED' then ${application.id} end)::int`,
-        rejectedCount: sql<number>`count(distinct case when ${application.status} = 'REJECTED' then ${application.id} end)::int`,
+        changesRequestedCount: sql<number>`count(distinct case when ${application.status} = 'CHANGES_REQUESTED' then ${application.id} end)::int`,
         removedCount:  sql<number>`count(distinct case when ${application.status} = 'REMOVED'  then ${application.id} end)::int`,
         lastLogin: sql<string | null>`max(${session.createdAt})`,
       })

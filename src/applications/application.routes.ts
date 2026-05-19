@@ -38,6 +38,13 @@ router.patch('/:id', requireAuth, applicationController.patchApplicationById);
 router.delete('/:id', requireAuth, applicationController.deleteApplicationById);
 
 /**
+ * @route GET /api/applications/me
+ * @description Get all applications for the authenticated user (all statuses)
+ * @access Private
+ */
+router.get('/me', requireAuth, applicationController.getMyApplications);
+
+/**
  * @route GET /api/applications/admin
  * @description List applications in moderation queue (Admin only)
  * @access Private (Admin only)
@@ -55,6 +62,13 @@ router.patch(
   requireRole('admin'),
   applicationController.reviewAdminApplicationById,
 );
+
+/**
+ * @route GET /api/applications/:slug/edit
+ * @description Get the owner's own application by slug (any status)
+ * @access Private
+ */
+router.get('/:slug/edit', requireAuth, applicationController.getOwnApplicationBySlug);
 
 /**
  * @route GET /api/applications/:slug

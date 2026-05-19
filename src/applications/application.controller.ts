@@ -41,6 +41,17 @@ export class ApplicationController {
   };
 
   /**
+   * Handles GET requests for the current user's own applications (all statuses)
+   * @route GET /api/applications/me
+   */
+  getMyApplications = async (req: Request, res: Response): Promise<void> => {
+    const authUserId = this.getAuthUserId(res);
+    const response = await this.applicationService.getMyApplications(authUserId);
+    const parsed = ApplicationsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
+  };
+
+  /**
    * Handles GET requests for applications in moderation queue (Admin only)
    * @route GET /api/applications/admin
    */
@@ -77,6 +88,20 @@ export class ApplicationController {
       applicationId: application.id,
       slug: application.slug,
     });
+
+    const parsed = ApplicationResponseSchema.parse(application);
+    res.status(200).json(parsed);
+  };
+
+  /**
+   * Handles GET requests for an owner's own application by slug (any status)
+   * @route GET /api/applications/:slug/edit
+   */
+  getOwnApplicationBySlug = async (req: Request, res: Response): Promise<void> => {
+    const { slug } = ApplicationSlugParamsSchema.parse(req.params);
+    const authUserId = this.getAuthUserId(res);
+
+    const application = await this.applicationService.getOwnApplicationBySlug(slug, authUserId);
 
     const parsed = ApplicationResponseSchema.parse(application);
     res.status(200).json(parsed);

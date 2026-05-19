@@ -327,23 +327,23 @@ describe('ApplicationService', () => {
       expect(reviewed.rejectionReason).toBeNull();
     });
 
-    it('should reject a pending application with rejection reason', async () => {
+    it('should request changes on a pending application with a reason', async () => {
       const app = await createTestApp({ status: 'PENDING' });
 
       await service.reviewAdminApplicationById(app.id, {
-        status: 'REJECTED',
+        status: 'CHANGES_REQUESTED',
         rejectionReason: 'Missing details',
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.status).toBe('REJECTED');
+      expect(reviewed.status).toBe('CHANGES_REQUESTED');
       expect(reviewed.rejectionReason).toBe('Missing details');
     });
 
-    it('should approve a rejected application when admin changes mind', async () => {
+    it('should approve a changes-requested application when admin changes mind', async () => {
       const app = await createTestApp({
-        status: 'REJECTED',
+        status: 'CHANGES_REQUESTED',
         rejectionReason: 'Initial rejection',
       });
 
@@ -375,12 +375,12 @@ describe('ApplicationService', () => {
       expect(reviewed.rejectionReason).toBe('Removed after admin review');
     });
 
-    it('should throw 400 when rejecting without rejection reason', async () => {
+    it('should throw 400 when requesting changes without a reason', async () => {
       const app = await createTestApp({ status: 'PENDING' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          status: 'REJECTED',
+          status: 'CHANGES_REQUESTED',
           rejectionReason: null,
         }),
       ).rejects.toMatchObject({
@@ -422,8 +422,8 @@ describe('ApplicationService', () => {
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          status: 'REJECTED',
-          rejectionReason: 'late rejection',
+          status: 'CHANGES_REQUESTED',
+          rejectionReason: 'late change request',
         }),
       ).rejects.toMatchObject({
         statusCode: 409,

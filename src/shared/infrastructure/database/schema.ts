@@ -19,7 +19,7 @@ import { sql } from 'drizzle-orm';
 export const applicationApprovalStatus = pgEnum('application_approval_status', [
   'PENDING',
   'APPROVED',
-  'REJECTED',
+  'CHANGES_REQUESTED',
   'REMOVED',
 ]);
 

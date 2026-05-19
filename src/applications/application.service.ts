@@ -40,7 +40,9 @@ export interface IApplicationService {
     page: number,
     filters?: AdminApplicationsListFilters,
   ): Promise<ApplicationsListResponse>;
+  getMyApplications(userId: string): Promise<ApplicationsListResponse>;
   getApplicationBySlug(slug: string): Promise<ApplicationResponse>;
+  getOwnApplicationBySlug(slug: string, actorUserId: string): Promise<ApplicationResponse>;
   createApplication(app: CreateApplicationRequest, actorUserId: string): Promise<void>;
   patchApplicationById(
     id: number,
@@ -63,6 +65,16 @@ export default class ApplicationService implements IApplicationService {
     return this.getFilteredApplications(limit, page, filters, eq(application.status, 'APPROVED'));
   };
 
+  getMyApplications = async (userId: string): Promise<ApplicationsListResponse> => {
+    const allStatuses = or(
+      eq(application.status, 'PENDING'),
+      eq(application.status, 'APPROVED'),
+      eq(application.status, 'CHANGES_REQUESTED'),
+      eq(application.status, 'REMOVED'),
+    )!;
+    return this.getFilteredApplications(APPLICATION_CONSTANTS.MAX_LIMIT, 1, { userId }, allStatuses);
+  };
+
   getAdminApplications = async (
     limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT,
     page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE,
@@ -72,7 +84,7 @@ export default class ApplicationService implements IApplicationService {
       ? eq(application.status, filters.status)
       : or(
           eq(application.status, 'PENDING'),
-          eq(application.status, 'REJECTED'),
+          eq(application.status, 'CHANGES_REQUESTED'),
           eq(application.status, 'REMOVED'),
         )!;
 
@@ -206,6 +218,30 @@ export default class ApplicationService implements IApplicationService {
     return result;
   };
 
+  getOwnApplicationBySlug = async (slug: string, actorUserId: string): Promise<ApplicationResponse> => {
+    const [result] = await this.db
+      .select({
+        ...getColumns(application),
+        userEmail: user.email,
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
+      })
+      .from(application)
+      .innerJoin(user, eq(application.userId, user.id))
+      .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
+      .where(and(eq(application.slug, slug), eq(application.userId, actorUserId)))
+      .groupBy(application.id, user.email)
+      .limit(1);
+
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    return result;
+  };
+
   createApplication = async (app: CreateApplicationRequest, actorUserId: string): Promise<void> => {
     if (!(await this.userExists(actorUserId))) {
       throw new HttpError(404, 'User not found', 'NOT_FOUND');
@@ -234,12 +270,29 @@ export default class ApplicationService implements IApplicationService {
       await this.assertOwnership(id, actorUserId);
       return this.getApplicationSlugById(id);
     }
+
+    const [current] = await this.db
+      .select({ status: application.status })
+      .from(application)
+      .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
+      .limit(1);
+
+    if (!current) {
+      await this.assertOwnership(id, actorUserId);
+      return this.getApplicationSlugById(id);
+    }
+
+    const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = { ...updates };
+    if (current.status === 'CHANGES_REQUESTED') {
+      setPayload.status = 'PENDING';
+    }
+
     let patched: { slug: string } | undefined;
 
     try {
       [patched] = await this.db
         .update(application)
-        .set(updates)
+        .set(setPayload)
         .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
         .returning({ slug: application.slug });
     } catch (error) {
@@ -283,10 +336,10 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    if ((input.status === 'REJECTED' || input.status === 'REMOVED') && !input.rejectionReason) {
+    if ((input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED') && !input.rejectionReason) {
       throw new HttpError(
         400,
-        'Rejection reason is required when rejecting or removing an application',
+        'Reason is required when requesting changes or removing an application',
         'VALIDATION_ERROR',
       );
     }
@@ -304,7 +357,7 @@ export default class ApplicationService implements IApplicationService {
       .set({
         status: input.status,
         rejectionReason:
-          input.status === 'REJECTED' || input.status === 'REMOVED' ? input.rejectionReason : null,
+          input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED' ? input.rejectionReason : null,
       })
       .where(eq(application.id, id))
       .returning();

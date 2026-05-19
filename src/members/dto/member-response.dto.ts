@@ -15,7 +15,7 @@ export const MemberResponseSchema = z
     reviewsCount: z.number().int().nonnegative().openapi({ example: 3 }),
     pendingCount: z.number().int().nonnegative().openapi({ example: 1 }),
     approvedCount: z.number().int().nonnegative().openapi({ example: 2 }),
-    rejectedCount: z.number().int().nonnegative().openapi({ example: 0 }),
+    changesRequestedCount: z.number().int().nonnegative().openapi({ example: 0 }),
     removedCount: z.number().int().nonnegative().openapi({ example: 0 }),
     lastLogin: z.string().nullable().openapi({ example: '2025-06-01T10:00:00.000Z' }),
   })

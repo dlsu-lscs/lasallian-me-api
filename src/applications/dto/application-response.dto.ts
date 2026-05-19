@@ -23,7 +23,7 @@ export const ApplicationResponseSchema = z
       .nullable()
       .openapi({ example: ['web', 'mobile'] }),
     status: z
-      .enum(['PENDING', 'APPROVED', 'REJECTED', 'REMOVED'])
+      .enum(['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REMOVED'])
       .openapi({ example: 'APPROVED' }),
     rejectionReason: z.string().nullable().openapi({ example: null }),
     createdAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
