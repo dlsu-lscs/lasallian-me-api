@@ -30,6 +30,8 @@ export const ApplicationResponseSchema = z
     updatedAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
     userEmail: z.email().openapi({ example: 'user@example.com' }),
     favoritesCount: z.number().int().nonnegative().openapi({ example: 12 }),
+    ratingCount: z.number().int().nonnegative().openapi({ example: 5 }),
+    averageRating: z.number().nullable().openapi({ example: 4.2 }),
   })
   .openapi('ApplicationResponse');
 

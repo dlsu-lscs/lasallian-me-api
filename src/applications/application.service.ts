@@ -25,7 +25,7 @@ import {
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorite, application, user } from './application.model.js';
+import { userFavorite, application, user, rating } from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
 
@@ -154,11 +154,14 @@ export default class ApplicationService implements IApplicationService {
       .select({
         ...getColumns(application),
         userEmail: user.email,
-        favoritesCount: count(userFavorite.userId),
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
       })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
       .where(whereClause)
       .groupBy(application.id, user.email)
       .orderBy(orderByClause)
@@ -184,11 +187,14 @@ export default class ApplicationService implements IApplicationService {
       .select({
         ...getColumns(application),
         userEmail: user.email,
-        favoritesCount: sql<number>`count(${userFavorite.userId})::int`,
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
       })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
       .where(and(eq(application.slug, slug), eq(application.status, 'APPROVED')))
       .groupBy(application.id, user.email)
       .limit(1);
