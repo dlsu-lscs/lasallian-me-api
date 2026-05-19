@@ -237,6 +237,7 @@ describe('ApplicationService', () => {
         slug: 'new-unique-app',
         title: 'New Application',
         description: 'A new app',
+        url: 'https://example.com/new-unique-app',
         githubLink: 'https://github.com/test/test-app',
         tags: ['new'],
       };
@@ -255,6 +256,7 @@ describe('ApplicationService', () => {
         slug: 'existing-slug',
         title: 'Duplicate',
         description: 'A new app',
+        url: 'https://example.com/existing-slug',
         githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
@@ -270,6 +272,7 @@ describe('ApplicationService', () => {
         slug: 'missing-user-app',
         title: 'Missing User',
         description: 'Should fail because authenticated user does not exist',
+        url: 'https://example.com/missing-user-app',
         githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
