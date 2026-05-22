@@ -7,6 +7,7 @@ export const CreateRatingRequestSchema = z
     comment: z
       .string()
       .trim()
+      .min(10)
       .max(255)
       .optional()
       .nullable()
