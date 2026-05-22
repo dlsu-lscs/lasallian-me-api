@@ -64,6 +64,49 @@ router.patch(
 );
 
 /**
+ * @route PATCH /api/applications/admin/:id/unclaimed
+ * @description Set the unclaimed flag on an application (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/admin/:id/unclaimed',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.setApplicationUnclaimedStatus,
+);
+
+/**
+ * @route GET /api/applications/admin/claims
+ * @description List all claim requests (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/admin/claims',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.getAdminClaimRequests,
+);
+
+/**
+ * @route PATCH /api/applications/admin/claims/:id/review
+ * @description Approve or decline a claim request (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/admin/claims/:id/review',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.reviewAdminClaimRequest,
+);
+
+/**
+ * @route POST /api/applications/:id/claim
+ * @description Submit a claim request for an unclaimed application
+ * @access Private
+ */
+router.post('/:id/claim', requireAuth, applicationController.claimApplication);
+
+/**
  * @route GET /api/applications/:slug/edit
  * @description Get the owner's own application by slug (any status)
  * @access Private

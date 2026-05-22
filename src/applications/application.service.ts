@@ -4,8 +4,13 @@ import type {
   ApplicationsListResponse,
   CreateApplicationRequest,
   PatchApplicationRequest,
+  ClaimApplicationRequest,
+  ReviewClaimRequest,
+  ClaimRequestResponse,
+  ClaimRequestsListResponse,
 } from './dto/index.js';
 import type { AdminApplicationsListFilters } from './dto/admin-applications-list-query.dto.js';
+import type { AdminClaimsListQuery } from './dto/admin-claims-list-query.dto.js';
 import {
   eq,
   SQL,
@@ -25,7 +30,7 @@ import {
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorite, application, user, rating } from './application.model.js';
+import { userFavorite, application, user, rating, applicationClaimRequest } from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
 
@@ -52,6 +57,10 @@ export interface IApplicationService {
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
   getUserByApplicationId(appId: number): Promise<{ id: string; email: string }>;
+  setApplicationUnclaimed(id: number, unclaimed: boolean): Promise<void>;
+  submitClaimRequest(applicationId: number, userId: string, input: ClaimApplicationRequest): Promise<void>;
+  getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
+  reviewAdminClaimRequest(claimId: number, input: ReviewClaimRequest): Promise<void>;
 }
 
 export default class ApplicationService implements IApplicationService {
@@ -395,6 +404,157 @@ export default class ApplicationService implements IApplicationService {
       .where(eq(application.id, appId))
       .limit(1);
     return result;
+  };
+
+  setApplicationUnclaimed = async (id: number, unclaimed: boolean): Promise<void> => {
+    const [existing] = await this.db
+      .select({ id: application.id })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    await this.db.update(application).set({ unclaimed }).where(eq(application.id, id));
+  };
+
+  submitClaimRequest = async (
+    applicationId: number,
+    userId: string,
+    input: ClaimApplicationRequest,
+  ): Promise<void> => {
+    const [app] = await this.db
+      .select({ id: application.id, unclaimed: application.unclaimed })
+      .from(application)
+      .where(eq(application.id, applicationId))
+      .limit(1);
+
+    if (!app) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (!app.unclaimed) {
+      throw new HttpError(409, 'Application is not unclaimed', 'INVALID_APPLICATION_STATE');
+    }
+
+    const [existing] = await this.db
+      .select({ id: applicationClaimRequest.id, status: applicationClaimRequest.status })
+      .from(applicationClaimRequest)
+      .where(
+        and(
+          eq(applicationClaimRequest.applicationId, applicationId),
+          eq(applicationClaimRequest.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (existing && (existing.status === 'PENDING' || existing.status === 'APPROVED')) {
+      throw new HttpError(409, 'You already have an active claim for this application', 'DUPLICATE_CLAIM');
+    }
+
+    if (existing) {
+      await this.db
+        .update(applicationClaimRequest)
+        .set({ additionalInfo: input.additionalInfo ?? null, status: 'PENDING' })
+        .where(eq(applicationClaimRequest.id, existing.id));
+    } else {
+      await this.db.insert(applicationClaimRequest).values({
+        applicationId,
+        userId,
+        additionalInfo: input.additionalInfo ?? null,
+        status: 'PENDING',
+      });
+    }
+  };
+
+  getAdminClaimRequests = async (query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse> => {
+    const { page, limit, status } = query;
+    const offset = (page - 1) * limit;
+
+    const statusCondition = status
+      ? eq(applicationClaimRequest.status, status)
+      : undefined;
+
+    const whereClause = statusCondition ?? sql`1=1`;
+
+    const [{ total }] = await this.db
+      .select({ total: count() })
+      .from(applicationClaimRequest)
+      .where(whereClause);
+
+    const rows = await this.db
+      .select({
+        id: applicationClaimRequest.id,
+        applicationId: applicationClaimRequest.applicationId,
+        applicationTitle: application.title,
+        applicationSlug: application.slug,
+        userId: applicationClaimRequest.userId,
+        userName: user.name,
+        userEmail: user.email,
+        userImage: user.image,
+        additionalInfo: applicationClaimRequest.additionalInfo,
+        status: applicationClaimRequest.status,
+        createdAt: applicationClaimRequest.createdAt,
+        updatedAt: applicationClaimRequest.updatedAt,
+      })
+      .from(applicationClaimRequest)
+      .innerJoin(application, eq(applicationClaimRequest.applicationId, application.id))
+      .innerJoin(user, eq(applicationClaimRequest.userId, user.id))
+      .where(whereClause)
+      .orderBy(desc(applicationClaimRequest.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      data: rows,
+      meta: {
+        page,
+        limit,
+        count: rows.length,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  };
+
+  reviewAdminClaimRequest = async (claimId: number, input: ReviewClaimRequest): Promise<void> => {
+    const [claim] = await this.db
+      .select()
+      .from(applicationClaimRequest)
+      .where(eq(applicationClaimRequest.id, claimId))
+      .limit(1);
+
+    if (!claim) {
+      throw new HttpError(404, 'Claim request not found', 'NOT_FOUND');
+    }
+
+    if (claim.status !== 'PENDING') {
+      throw new HttpError(409, 'Only PENDING claims can be reviewed', 'INVALID_APPLICATION_STATE');
+    }
+
+    if (input.status === 'APPROVED') {
+      await this.db
+        .update(application)
+        .set({ userId: claim.userId, unclaimed: false })
+        .where(eq(application.id, claim.applicationId));
+
+      await this.db
+        .update(applicationClaimRequest)
+        .set({ status: 'DECLINED' })
+        .where(
+          and(
+            eq(applicationClaimRequest.applicationId, claim.applicationId),
+            eq(applicationClaimRequest.status, 'PENDING'),
+          ),
+        );
+    }
+
+    await this.db
+      .update(applicationClaimRequest)
+      .set({ status: input.status })
+      .where(eq(applicationClaimRequest.id, claimId));
   };
 
   private slugExists = async (slug: string): Promise<boolean> => {

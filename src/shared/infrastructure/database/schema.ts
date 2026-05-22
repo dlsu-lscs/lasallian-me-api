@@ -16,6 +16,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
+export const claimRequestStatus = pgEnum('claim_request_status', ['PENDING', 'APPROVED', 'DECLINED']);
+
 export const applicationApprovalStatus = pgEnum('application_approval_status', [
   'PENDING',
   'APPROVED',
@@ -58,6 +60,7 @@ export const application = pgTable(
     tags: varchar({ length: 50 }).array(),
     status: applicationApprovalStatus('status').default('PENDING').notNull(),
     rejectionReason: text('rejection_reason'),
+    unclaimed: boolean('unclaimed').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
@@ -190,5 +193,37 @@ export const userFavorite = pgTable(
       name: 'user_favorite_application_id_fkey',
     }).onDelete('cascade'),
     primaryKey({ columns: [table.userId, table.applicationId], name: 'user_favorite_pkey' }),
+  ],
+);
+
+export const applicationClaimRequest = pgTable(
+  'application_claim_request',
+  {
+    id: serial().primaryKey().notNull(),
+    applicationId: integer('application_id').notNull(),
+    userId: text('user_id').notNull(),
+    additionalInfo: text('additional_info'),
+    status: claimRequestStatus('status').notNull().default('PENDING'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('claim_request_application_user_unq').on(table.applicationId, table.userId),
+    index('claim_request_application_id_idx').on(table.applicationId),
+    index('claim_request_user_id_idx').on(table.userId),
+    index('claim_request_status_idx').on(table.status),
+    foreignKey({
+      columns: [table.applicationId],
+      foreignColumns: [application.id],
+      name: 'claim_request_application_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'claim_request_user_id_fkey',
+    }).onDelete('cascade'),
   ],
 );
