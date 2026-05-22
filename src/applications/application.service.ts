@@ -56,7 +56,13 @@ export interface IApplicationService {
   ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
-  getUserByApplicationId(appId: number): Promise<{ id: string; email: string }>;
+  getUserByApplicationId(appId: number): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    applicationTitle: string;
+    applicationSlug: string;
+  }>;
   setApplicationUnclaimed(id: number, unclaimed: boolean): Promise<void>;
   submitClaimRequest(applicationId: number, userId: string, input: ClaimApplicationRequest): Promise<void>;
   getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
@@ -396,9 +402,21 @@ export default class ApplicationService implements IApplicationService {
     return;
   };
 
-  getUserByApplicationId = async (appId: number): Promise<{ id: string; email: string }> => {
+  getUserByApplicationId = async (appId: number): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    applicationTitle: string;
+    applicationSlug: string;
+  }> => {
     const [result] = await this.db
-      .select({ id: user.id, email: user.email })
+      .select({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        applicationTitle: application.title,
+        applicationSlug: application.slug,
+      })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .where(eq(application.id, appId))

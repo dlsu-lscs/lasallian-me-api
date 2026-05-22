@@ -18,7 +18,7 @@ import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-
 import { AdminClaimsListQuerySchema } from './dto/admin-claims-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import { sendStatusNotificationEmail } from '@/shared/infrastructure/mailer.js';
+import { sendApplicationStatusEmail } from '@/shared/infrastructure/mailer.js';
 
 export class ApplicationController {
   constructor(private applicationService: IApplicationService) {}
@@ -186,11 +186,13 @@ export class ApplicationController {
 
     const user = await this.applicationService.getUserByApplicationId(id);
 
-    await sendStatusNotificationEmail(
-      user.email,
-      `Your application has been ${body.status}`,
-      `Dear Applicant,\n\nWe are writing to inform you that your application has been ${body.status}.\n\nThank you for your interest.\n\nBest regards,\nThe Team`,
-    );
+    await sendApplicationStatusEmail(user.email, {
+      userName: user.name,
+      applicationTitle: user.applicationTitle,
+      applicationSlug: user.applicationSlug,
+      status: body.status,
+      rejectionReason: body.rejectionReason,
+    });
 
     logger.info('Application reviewed successfully', {
       applicationId: id,

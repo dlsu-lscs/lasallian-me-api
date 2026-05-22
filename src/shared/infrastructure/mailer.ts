@@ -1,85 +1,170 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { logger } from '../utils/logger.js';
-import 'dotenv/config'; 
-export const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
 
-export const testMailer = async () => {
-  try {
-    await transporter.verify();
-    logger.info('SMTP server is ready to take our messages');
-  } catch (err) {
-    logger.error('Error connecting to SMTP server:', err);
-  }
+export interface ApplicationStatusEmailData {
+  userName: string;
+  applicationTitle: string;
+  applicationSlug: string;
+  status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REMOVED';
+  rejectionReason?: string | null;
 }
 
-testMailer();
+const FROM = 'pana.tools <pana.tools@app.animo.li>';
 
+const STATUS_CONFIG = {
+  APPROVED: { label: 'Application Approved', accentColor: '#16a34a' },
+  CHANGES_REQUESTED: { label: 'Changes Requested', accentColor: '#d97706' },
+  REMOVED: { label: 'Application Removed', accentColor: '#dc2626' },
+} as const;
 
-export class EmailError extends Error {
-  code: string;
-  command?: string;
-  response?: string;
-  responseCode?: number;
-  rejected?: string[];
-
-  constructor(
-    message: string,
-    code: string,
-    options?: {
-      command?: string;
-      response?: string;
-      responseCode?: number;
-      rejected?: string[];
-    },
-  ) {
-    super(message);
-    this.name = 'EmailError';
-    this.code = code;
-    this.command = options?.command;
-    this.response = options?.response;
-    this.responseCode = options?.responseCode;
-    this.rejected = options?.rejected;
-  }
+function escape(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-export const sendStatusNotificationEmail = async (to: string, subject: string, text: string) => {
-  try {
-    const info = await transporter.sendMail({
-      from: `${process.env.SMTP_USER}`, 
-      to: `${to}`,
-      subject: `${subject}`,
-      text: `${text}`,
-    });
-    logger.info('Message sent:', info.messageId);
+function buildEmail(data: ApplicationStatusEmailData): { subject: string; html: string } {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pana.tools';
+  const config = STATUS_CONFIG[data.status];
+  const appUrl = `${siteUrl}/${data.applicationSlug}`;
+  const editUrl = `${siteUrl}/${data.applicationSlug}/edit`;
 
-    if (info.rejected.length > 0) {
-      logger.warn('Some recipients were rejected:', info.rejected);
-    }
-  } catch (err: unknown) {
-    if (err instanceof EmailError) {
-      switch (err.code) {
-        case 'ECONNECTION':
-        case 'ETIMEDOUT':
-          logger.error('Network error - retry later:', err.message);
-          break;
-        case 'EAUTH':
-          logger.error('Authentication failed:', err.message);
-          break;
-        case 'EENVELOPE':
-          logger.error('Invalid recipients:', err.rejected);
-          break;
-        default:
-          logger.error('Send failed:', err.message);
-      }
-    } else {
-      logger.error('An unknown error occurred:', err);
-    }
+  const subject = `${config.label} — ${data.applicationTitle}`;
+
+  let bodyHtml = '';
+  let ctaUrl = '';
+  let ctaLabel = '';
+
+  switch (data.status) {
+    case 'APPROVED':
+      bodyHtml = `
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">
+          Congratulations! Your app <strong>${escape(data.applicationTitle)}</strong> has been reviewed and approved by the LSCS team. It is now live and visible to the public on pana.tools.
+        </p>
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;">
+          Thank you for contributing to the LaSallian community.
+        </p>`;
+      ctaUrl = appUrl;
+      ctaLabel = 'View Your Application';
+      break;
+
+    case 'CHANGES_REQUESTED':
+      bodyHtml = `
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">
+          Your app <strong>${escape(data.applicationTitle)}</strong> has been reviewed and requires some changes before it can be approved.
+        </p>
+        ${
+          data.rejectionReason
+            ? `<div style="background:#fffbeb;border-left:3px solid #d97706;padding:16px 20px;border-radius:0 6px 6px 0;margin:0 0 20px;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;">Feedback from reviewers</p>
+                <p style="margin:0;font-size:14px;line-height:1.6;color:#1c1917;">${escape(data.rejectionReason)}</p>
+               </div>`
+            : ''
+        }
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;">
+          Please address the feedback above and resubmit for review.
+        </p>`;
+      ctaUrl = editUrl;
+      ctaLabel = 'Edit Your Application';
+      break;
+
+    case 'REMOVED':
+      bodyHtml = `
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">
+          Your app <strong>${escape(data.applicationTitle)}</strong> has been removed from pana.tools.
+        </p>
+        ${
+          data.rejectionReason
+            ? `<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:16px 20px;border-radius:0 6px 6px 0;margin:0 0 20px;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#991b1b;">Reason</p>
+                <p style="margin:0;font-size:14px;line-height:1.6;color:#1c1917;">${escape(data.rejectionReason)}</p>
+               </div>`
+            : ''
+        }
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#374151;">
+          If you have questions about this decision, please reach out to the LSCS R&amp;D team.
+        </p>`;
+      ctaUrl = siteUrl;
+      ctaLabel = 'Visit pana.tools';
+      break;
   }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>${escape(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+          <tr>
+            <td style="background:#006633;padding:28px 40px 24px;">
+              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.2;letter-spacing:-.01em;">pana.tools</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:${config.accentColor};padding:14px 40px;">
+              <p style="margin:0;font-size:15px;font-weight:600;color:#ffffff;letter-spacing:.01em;">${config.label}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 40px 32px;">
+              <p style="margin:0 0 20px;font-size:15px;color:#374151;">Hi ${escape(data.userName)},</p>
+              ${bodyHtml}
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px;">
+                <tr>
+                  <td style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;">
+                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Application</p>
+                    <p style="margin:0;font-size:15px;font-weight:600;color:#111827;">${escape(data.applicationTitle)}</p>
+                  </td>
+                </tr>
+              </table>
+              <a href="${ctaUrl}" style="display:inline-block;background:#006633;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:8px;letter-spacing:.01em;">${ctaLabel} &rarr;</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f9fafb;border-top:1px solid #f3f4f6;padding:22px 40px;">
+              <p style="margin:0 0 2px;font-size:13px;color:#6b7280;">La Salle Computer Society</p>
+              <p style="margin:0 0 12px;font-size:12px;color:#9ca3af;">2401 Taft Avenue, Gokongwei Hall, LSCS Nook</p>
+              <p style="margin:0;font-size:12px;color:#9ca3af;">This is an automated notification. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+export const sendApplicationStatusEmail = async (
+  to: string,
+  data: ApplicationStatusEmailData,
+): Promise<void> => {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    logger.error('RESEND_API_KEY not configured — email not sent');
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const { subject, html } = buildEmail(data);
+
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+
+  if (error) {
+    logger.error('Failed to send email via Resend', { to, status: data.status, error });
+    return;
+  }
+
+  logger.info('Application status email sent', { to, status: data.status });
 };
