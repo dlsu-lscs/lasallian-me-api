@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type { IApplicationService } from './application.service.js';
+import { z } from '@/shared/config/openapi.js';
 import {
   ApplicationsListQuerySchema,
   ApplicationSlugParamsSchema,
@@ -9,8 +10,12 @@ import {
   ReviewApplicationRequestSchema,
   ApplicationsListResponseSchema,
   ApplicationResponseSchema,
+  ClaimApplicationRequestSchema,
+  ReviewClaimRequestSchema,
+  ClaimRequestsListResponseSchema,
 } from './dto/index.js';
 import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-query.dto.js';
+import { AdminClaimsListQuerySchema } from './dto/admin-claims-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { sendStatusNotificationEmail } from '@/shared/infrastructure/mailer.js';
@@ -191,6 +196,59 @@ export class ApplicationController {
       applicationId: id,
       status: body.status,
     });
+
+    res.status(204).send();
+  };
+
+  /**
+   * Set the unclaimed status of an application (admin)
+   * @route PATCH /api/applications/admin/:id/unclaimed
+   */
+  setApplicationUnclaimedStatus = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const { unclaimed } = z.object({ unclaimed: z.boolean() }).parse(req.body);
+
+    await this.applicationService.setApplicationUnclaimed(id, unclaimed);
+
+    res.status(204).send();
+  };
+
+  /**
+   * Submit a claim request for an unclaimed application
+   * @route POST /api/applications/:id/claim
+   */
+  claimApplication = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = ClaimApplicationRequestSchema.parse(req.body);
+    const authUserId = this.getAuthUserId(res);
+
+    await this.applicationService.submitClaimRequest(id, authUserId, body);
+
+    res.status(201).json({ message: 'Claim request submitted successfully' });
+  };
+
+  /**
+   * List all claim requests (admin)
+   * @route GET /api/applications/admin/claims
+   */
+  getAdminClaimRequests = async (req: Request, res: Response): Promise<void> => {
+    const query = AdminClaimsListQuerySchema.parse(req.query);
+
+    const response = await this.applicationService.getAdminClaimRequests(query);
+
+    const parsed = ClaimRequestsListResponseSchema.parse(response);
+    res.status(200).json(parsed);
+  };
+
+  /**
+   * Approve or decline a claim request (admin)
+   * @route PATCH /api/applications/admin/claims/:id/review
+   */
+  reviewAdminClaimRequest = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+    const body = ReviewClaimRequestSchema.parse(req.body);
+
+    await this.applicationService.reviewAdminClaimRequest(id, body);
 
     res.status(204).send();
   };

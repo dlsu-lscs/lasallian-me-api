@@ -26,6 +26,7 @@ export const ApplicationResponseSchema = z
       .enum(['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REMOVED'])
       .openapi({ example: 'APPROVED' }),
     rejectionReason: z.string().nullable().openapi({ example: null }),
+    unclaimed: z.boolean().openapi({ example: false }),
     createdAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
     updatedAt: z.date().openapi({ example: '2025-01-01T00:00:00.000Z' }),
     userEmail: z.email().openapi({ example: 'user@example.com' }),
