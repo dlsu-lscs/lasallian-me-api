@@ -7,6 +7,7 @@ import './applications/application.openapi.js';
 import './favorites/favorites.openapi.js';
 import './ratings/rating.openapi.js';
 import './members/member.openapi.js';
+import './images/images.openapi.js';
 
 import authRoutes from './shared/auth/auth.routes.js';
 import applicationRoutes from './applications/application.routes.js';
@@ -14,7 +15,7 @@ import favoritesRoutes from '@/favorites/favorites.routes.js';
 import ratingsRoutes from '@/ratings/rating.routes.js';
 import memberRoutes from './members/member.routes.js';
 import swaggerRoutes from './shared/routes/swagger.routes.js';
-
+import imagesRoutes from './images/images.routes.js';
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -32,6 +33,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api', ratingsRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/images', imagesRoutes);
 
 // API Documentation (mounted last)
 if (!isProduction) {
