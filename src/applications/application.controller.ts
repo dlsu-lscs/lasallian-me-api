@@ -18,7 +18,13 @@ import { AdminApplicationsListQuerySchema } from './dto/admin-applications-list-
 import { AdminClaimsListQuerySchema } from './dto/admin-claims-list-query.dto.js';
 import { logger } from '@/shared/utils/logger.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import { sendApplicationStatusEmail } from '@/shared/infrastructure/mailer.js';
+import {
+  sendApplicationStatusEmail,
+  sendApplicationSubmittedEmail,
+  sendAdminNewSubmissionEmail,
+  sendClaimSubmittedEmail,
+  sendAdminNewClaimEmail,
+} from '@/shared/infrastructure/mailer.js';
 
 export class ApplicationController {
   constructor(private applicationService: IApplicationService) {}
@@ -128,6 +134,25 @@ export class ApplicationController {
       slug: body.slug,
     });
 
+    const [submitter, adminEmails] = await Promise.all([
+      this.applicationService.getUserById(authUserId),
+      this.applicationService.getAdminEmails(),
+    ]);
+
+    await Promise.all([
+      sendApplicationSubmittedEmail(submitter.email, {
+        userName: submitter.name,
+        applicationTitle: body.title,
+        applicationSlug: body.slug,
+      }),
+      sendAdminNewSubmissionEmail(adminEmails, {
+        userName: submitter.name,
+        userEmail: submitter.email,
+        applicationTitle: body.title,
+        applicationSlug: body.slug,
+      }),
+    ]);
+
     res.status(201).json({ slug: body.slug });
   };
 
@@ -225,6 +250,26 @@ export class ApplicationController {
     const authUserId = this.getAuthUserId(res);
 
     await this.applicationService.submitClaimRequest(id, authUserId, body);
+
+    const [claimant, app, adminEmails] = await Promise.all([
+      this.applicationService.getUserById(authUserId),
+      this.applicationService.getApplicationById(id),
+      this.applicationService.getAdminEmails(),
+    ]);
+
+    await Promise.all([
+      sendClaimSubmittedEmail(claimant.email, {
+        userName: claimant.name,
+        applicationTitle: app.title,
+        applicationSlug: app.slug,
+      }),
+      sendAdminNewClaimEmail(adminEmails, {
+        userName: claimant.name,
+        userEmail: claimant.email,
+        applicationTitle: app.title,
+        applicationSlug: app.slug,
+      }),
+    ]);
 
     res.status(201).json({ message: 'Claim request submitted successfully' });
   };

@@ -63,6 +63,9 @@ export interface IApplicationService {
     applicationTitle: string;
     applicationSlug: string;
   }>;
+  getUserById(userId: string): Promise<{ id: string; email: string; name: string }>;
+  getApplicationById(id: number): Promise<{ title: string; slug: string }>;
+  getAdminEmails(): Promise<string[]>;
   setApplicationUnclaimed(id: number, unclaimed: boolean): Promise<void>;
   submitClaimRequest(applicationId: number, userId: string, input: ClaimApplicationRequest): Promise<void>;
   getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
@@ -573,6 +576,35 @@ export default class ApplicationService implements IApplicationService {
       .update(applicationClaimRequest)
       .set({ status: input.status })
       .where(eq(applicationClaimRequest.id, claimId));
+  };
+
+  getUserById = async (userId: string): Promise<{ id: string; email: string; name: string }> => {
+    const [result] = await this.db
+      .select({ id: user.id, email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return result;
+  };
+
+  getApplicationById = async (id: number): Promise<{ title: string; slug: string }> => {
+    const [result] = await this.db
+      .select({ title: application.title, slug: application.slug })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+    return result;
+  };
+
+  getAdminEmails = async (): Promise<string[]> => {
+    const results = await this.db
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.role, 'admin'));
+    return results.map((r) => r.email);
   };
 
   private slugExists = async (slug: string): Promise<boolean> => {
