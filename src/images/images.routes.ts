@@ -19,17 +19,9 @@ const contentTypeToExt: Record<string, string> = {
 
 router.get('/uploads/presigned', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const parsed = S3PresignedUploadQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: {
-          message: 'Invalid query parameters',
-          code: 'VALIDATION_ERROR',
-        },
-      });
-      return;
-    }
-    const { contentType, type } = parsed.data;
+    const parsed = S3PresignedUploadQuerySchema.parse(req.query);
+
+    const { contentType, type } = parsed;
 
     const bucket = process.env.AWS_S3_BUCKET_NAME;
     if (!bucket) {
@@ -69,17 +61,9 @@ router.get('/uploads/presigned', requireAuth, async (req: Request, res: Response
 
 router.get('/signed', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const parsed = S3ImageQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: {
-          message: 'Invalid query parameters',
-          code: 'VALIDATION_ERROR',
-        },
-      });
-      return;
-    }
-    const { key } = parsed.data;
+    const parsed = S3ImageQuerySchema.parse(req.query);
+
+    const { key } = parsed;
 
     const bucket = process.env.AWS_S3_BUCKET_NAME;
     if (!bucket) {
