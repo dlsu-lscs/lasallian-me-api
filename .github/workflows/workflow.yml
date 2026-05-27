@@ -3,9 +3,9 @@ name: Setup Lint Test
 
 on: 
   push: 
-    branches: [main]
+    branches: [main, development]
   pull_request:
-    branches: [main]
+    branches: [main, development]
 
 jobs:
   test:
@@ -30,6 +30,9 @@ jobs:
       
       - name: Run lint 
         run: pnpm run lint 
+
+      - name: Run build
+        run: pnpm run build
 
       # - name: Run tests
       #   run: pnpm test
