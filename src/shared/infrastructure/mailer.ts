@@ -9,7 +9,7 @@ export interface ApplicationStatusEmailData {
   rejectionReason?: string | null;
 }
 
-const FROM = 'pana.tools <pana.tools@app.animo.li>';
+const FROM = 'pana.tools <notifications@app.pana.tools>';
 
 const STATUS_CONFIG = {
   APPROVED: { label: 'Application Approved', accentColor: '#16a34a' },
