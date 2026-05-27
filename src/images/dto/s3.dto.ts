@@ -24,7 +24,7 @@ export const S3PresignedUploadResponseSchema = z
   .object({
     presignedUrl: z
       .url()
-      .openapi({ example: 'https://example-bucket.s3.amazonaws.com/presigned-url' }),
+      .openapi({ example: 'https://garage.example.com/your-bucket/presigned-url' }),
     key: z.string().openapi({ example: 'preview-images/1716190812345-uuid.png' }),
   })
   .openapi('S3PresignedUploadResponse');
