@@ -18,12 +18,11 @@ export const CreateApplicationRequestSchema = z
     githubLink: z.url('Invalid GitHub URL format').trim().nullish().openapi({ example: 'https://github.com/user/repo' }),
     author: z.string().trim().max(255).nullish().openapi({ example: 'Jane Doe' }),
     previewImages: z
-      .array(z.url('Invalid image URL').trim())
+      .array(z.string().trim())
       .nullish()
       .openapi({ example: ['https://example.com/image1.jpg'] }),
     icon: z
       .string()
-      .url('Invalid icon URL')
       .trim()
       .nullish()
       .openapi({ example: 'https://example.com/icon.jpg' }),
