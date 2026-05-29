@@ -74,7 +74,7 @@ registry.registerPath({
             type: 'string',
             format: 'uri',
           },
-          example: 'https://example-bucket.s3.amazonaws.com/presigned-url',
+          example: 'https://garage.example.com/your-bucket/presigned-url',
         },
         'Cache-Control': {
           schema: {
