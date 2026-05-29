@@ -1,3 +1,4 @@
+
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
@@ -9,6 +10,8 @@ import { HttpError } from '@/shared/middleware/error.middleware.js';
 import { S3ImageQuerySchema, S3PresignedUploadQuerySchema } from './dto/index.js';
 
 const router = Router();
+
+const ALLOWED_PREFIXES = ['preview-images/', 'icons/'];
 
 const contentTypeToExt: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -44,8 +47,12 @@ router.get(
   },
 );
 
-router.get('/signed', requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.get('/signed', async (req: Request, res: Response): Promise<void> => {
   const { key } = S3ImageQuerySchema.parse(req.query);
+
+  if (!ALLOWED_PREFIXES.some((p) => key.startsWith(p))) {
+    throw new HttpError(400, 'Invalid key', 'INVALID_KEY');
+  }
 
   const bucket = process.env.S3_BUCKET;
   if (!bucket) {

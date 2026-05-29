@@ -71,12 +71,14 @@ async function seedDatabase() {
           description: funcs.loremIpsum({ sentencesCount: 2 }),
           url: funcs.string(),
           githubLink: funcs.string(),
+          previewImages: funcs.default({ defaultValue: null }),
+          icon: funcs.default({ defaultValue: null }),
           tags: funcs.valuesFromArray({
             values: ['web', 'mobile', 'api', 'ai', 'iot', 'design'],
             arraySize: 3,
           }),
           status: funcs.valuesFromArray({
-            values: ['APPROVED', 'PENDING', 'REJECTED', 'REMOVED'],
+            values: ['APPROVED', 'PENDING', 'CHANGES_REQUESTED', 'REMOVED'],
           }),
           rejectionReason: funcs.valuesFromArray({
             values: [null, null, null, 'Needs better screenshots', 'Insufficient description'],
