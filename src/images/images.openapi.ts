@@ -110,3 +110,44 @@ registry.registerPath({
     },
   },
 });
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/images',
+  description: 'Delete an image by key',
+  summary: 'Delete image',
+  security: authenticatedUserSecurity,
+  tags: ['Images'],
+  request: {
+    query: S3ImageQuerySchema,
+  },
+  responses: {
+    204: {
+      description: 'Image deleted successfully',
+    },
+    400: {
+      description: 'Invalid query parameters - VALIDATION_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized - UNAUTHORIZED',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error - INTERNAL_ERROR',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

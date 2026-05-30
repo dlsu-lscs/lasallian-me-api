@@ -6,9 +6,9 @@ import type {
   PatchApplicationRequest,
   ClaimApplicationRequest,
   ReviewClaimRequest,
-  ClaimRequestResponse,
   ClaimRequestsListResponse,
 } from './dto/index.js';
+import { deleteS3ImageObjects } from '@/shared/infrastructure/s3/image-cleanup.js';
 import type { AdminApplicationsListFilters } from './dto/admin-applications-list-query.dto.js';
 import type { AdminClaimsListQuery } from './dto/admin-claims-list-query.dto.js';
 import {
@@ -30,7 +30,13 @@ import {
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorite, application, user, rating, applicationClaimRequest } from './application.model.js';
+import {
+  userFavorite,
+  application,
+  user,
+  rating,
+  applicationClaimRequest,
+} from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
 
@@ -67,7 +73,11 @@ export interface IApplicationService {
   getApplicationById(id: number): Promise<{ title: string; slug: string }>;
   getAdminEmails(): Promise<string[]>;
   setApplicationUnclaimed(id: number, unclaimed: boolean): Promise<void>;
-  submitClaimRequest(applicationId: number, userId: string, input: ClaimApplicationRequest): Promise<void>;
+  submitClaimRequest(
+    applicationId: number,
+    userId: string,
+    input: ClaimApplicationRequest,
+  ): Promise<void>;
   getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
   reviewAdminClaimRequest(claimId: number, input: ReviewClaimRequest): Promise<void>;
 }
@@ -90,7 +100,12 @@ export default class ApplicationService implements IApplicationService {
       eq(application.status, 'CHANGES_REQUESTED'),
       eq(application.status, 'REMOVED'),
     )!;
-    return this.getFilteredApplications(APPLICATION_CONSTANTS.MAX_LIMIT, 1, { userId }, allStatuses);
+    return this.getFilteredApplications(
+      APPLICATION_CONSTANTS.MAX_LIMIT,
+      1,
+      { userId },
+      allStatuses,
+    );
   };
 
   getAdminApplications = async (
@@ -236,7 +251,10 @@ export default class ApplicationService implements IApplicationService {
     return result;
   };
 
-  getOwnApplicationBySlug = async (slug: string, actorUserId: string): Promise<ApplicationResponse> => {
+  getOwnApplicationBySlug = async (
+    slug: string,
+    actorUserId: string,
+  ): Promise<ApplicationResponse> => {
     const [result] = await this.db
       .select({
         ...getColumns(application),
@@ -300,7 +318,9 @@ export default class ApplicationService implements IApplicationService {
       return this.getApplicationSlugById(id);
     }
 
-    const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = { ...updates };
+    const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = {
+      ...updates,
+    };
     if (current.status === 'CHANGES_REQUESTED') {
       setPayload.status = 'PENDING';
     }
@@ -354,7 +374,10 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    if ((input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED') && !input.rejectionReason) {
+    if (
+      (input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED') &&
+      !input.rejectionReason
+    ) {
       throw new HttpError(
         400,
         'Reason is required when requesting changes or removing an application',
@@ -375,7 +398,9 @@ export default class ApplicationService implements IApplicationService {
       .set({
         status: input.status,
         rejectionReason:
-          input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED' ? input.rejectionReason : null,
+          input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED'
+            ? input.rejectionReason
+            : null,
       })
       .where(eq(application.id, id))
       .returning();
@@ -384,28 +409,33 @@ export default class ApplicationService implements IApplicationService {
   };
 
   deleteApplicationById = async (id: number, actorUserId: string): Promise<void> => {
-    const [deleted] = await this.db
-      .delete(application)
-      .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
-      .returning();
+    const [existing] = await this.db
+      .select({
+        id: application.id,
+        userId: application.userId,
+        icon: application.icon,
+        previewImages: application.previewImages,
+      })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
 
-    if (!deleted) {
-      const [exists] = await this.db
-        .select({ id: application.id })
-        .from(application)
-        .where(eq(application.id, id))
-        .limit(1);
-
-      if (exists) {
-        throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
-      }
+    if (!existing) {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
-    return;
+    if (existing.userId !== actorUserId) {
+      throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
+    }
+
+    await this.db.delete(application).where(eq(application.id, id));
+
+    await deleteS3ImageObjects([existing.icon, ...(existing.previewImages ?? [])]);
   };
 
-  getUserByApplicationId = async (appId: number): Promise<{
+  getUserByApplicationId = async (
+    appId: number,
+  ): Promise<{
     id: string;
     email: string;
     name: string;
@@ -472,7 +502,11 @@ export default class ApplicationService implements IApplicationService {
       .limit(1);
 
     if (existing && (existing.status === 'PENDING' || existing.status === 'APPROVED')) {
-      throw new HttpError(409, 'You already have an active claim for this application', 'DUPLICATE_CLAIM');
+      throw new HttpError(
+        409,
+        'You already have an active claim for this application',
+        'DUPLICATE_CLAIM',
+      );
     }
 
     if (existing) {
@@ -490,13 +524,13 @@ export default class ApplicationService implements IApplicationService {
     }
   };
 
-  getAdminClaimRequests = async (query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse> => {
+  getAdminClaimRequests = async (
+    query: AdminClaimsListQuery,
+  ): Promise<ClaimRequestsListResponse> => {
     const { page, limit, status } = query;
     const offset = (page - 1) * limit;
 
-    const statusCondition = status
-      ? eq(applicationClaimRequest.status, status)
-      : undefined;
+    const statusCondition = status ? eq(applicationClaimRequest.status, status) : undefined;
 
     const whereClause = statusCondition ?? sql`1=1`;
 

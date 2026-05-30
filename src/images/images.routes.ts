@@ -1,5 +1,4 @@
-
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
@@ -73,6 +72,28 @@ router.get('/signed', async (req: Request, res: Response): Promise<void> => {
       'Cache-Control': 'public, max-age=3600',
     })
     .end();
+});
+
+router.delete('/', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const { key } = S3ImageQuerySchema.parse(req.query);
+
+  if (!ALLOWED_PREFIXES.some((p) => key.startsWith(p))) {
+    throw new HttpError(400, 'Invalid key', 'INVALID_KEY');
+  }
+
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) {
+    throw new HttpError(500, 'Server misconfigured', 'INTERNAL_ERROR');
+  }
+
+  const command = new DeleteObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+
+  await s3.send(command);
+
+  res.status(204).send();
 });
 
 export default router;
