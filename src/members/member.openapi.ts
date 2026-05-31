@@ -1,4 +1,4 @@
-import { registry, ErrorResponseSchema, z } from '@/shared/config/openapi.js';
+import { registry, ErrorResponseSchema } from '@/shared/config/openapi.js';
 import {
   MembersListQuerySchema,
   MembersListResponseSchema,
@@ -53,10 +53,6 @@ registry.registerPath({
       content: { 'application/json': { schema: ErrorResponseSchema } },
     },
   },
-});
-
-const banBody = z.object({
-  body: BanMemberRequestSchema,
 });
 
 registry.registerPath({
