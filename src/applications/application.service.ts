@@ -306,6 +306,7 @@ export default class ApplicationService implements IApplicationService {
       await this.assertOwnership(id, actorUserId);
       return this.getApplicationSlugById(id);
     }
+    let patched: { slug: string } | undefined;
 
     const [current] = await this.db
       .select({ status: application.status })
