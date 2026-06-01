@@ -451,7 +451,7 @@ describe('ApplicationService', () => {
     it('should update application when it exists', async () => {
       const app = await createTestApp({ title: 'Old Title' });
 
-      await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId);
+      await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 
@@ -464,7 +464,7 @@ describe('ApplicationService', () => {
 
     it('should throw 404 when application not found', async () => {
       await expect(
-        service.patchApplicationById(99999, { title: 'New Title' }, testUserId),
+        service.patchApplicationById(99999, { title: 'New Title' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 404,
         code: 'NOT_FOUND',
@@ -476,7 +476,7 @@ describe('ApplicationService', () => {
       const appB = await createTestApp({ slug: 'slug-b' });
 
       await expect(
-        service.patchApplicationById(appB.id, { slug: 'slug-a' }, testUserId),
+        service.patchApplicationById(appB.id, { slug: 'slug-a' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 409,
         code: 'DUPLICATE_SLUG',
@@ -486,7 +486,7 @@ describe('ApplicationService', () => {
     it('should allow updating to the same slug', async () => {
       const app = await createTestApp({ slug: 'my-slug', title: 'Old' });
 
-      await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId);
+      await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug('my-slug');
 
@@ -497,7 +497,7 @@ describe('ApplicationService', () => {
     it('should allow partial updates', async () => {
       const app = await createTestApp({ title: 'Title', description: 'Desc' });
 
-      await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId);
+      await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 
@@ -509,7 +509,7 @@ describe('ApplicationService', () => {
       const app = await createTestApp({ title: 'Title', userId: otherUserId });
 
       await expect(
-        service.patchApplicationById(app.id, { title: 'New Title' }, testUserId),
+        service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 403,
         code: 'FORBIDDEN',
@@ -519,7 +519,7 @@ describe('ApplicationService', () => {
     it('should return current application for empty patch', async () => {
       const app = await createTestApp({ title: 'Title' });
 
-      await service.patchApplicationById(app.id, {}, testUserId);
+      await service.patchApplicationById(app.id, {}, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 
