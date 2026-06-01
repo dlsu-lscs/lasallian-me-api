@@ -164,10 +164,11 @@ export class ApplicationController {
     const { id } = ApplicationIdParamsSchema.parse(req.params);
     const body = PatchApplicationRequestSchema.parse(req.body);
     const authUserId = this.getAuthUserId(res);
+    const authUserRole = this.getAuthUserRole(res)
 
     logger.debug('Patching application', { id, updates: body });
 
-    const slug = await this.applicationService.patchApplicationById(id, body, authUserId);
+    const slug = await this.applicationService.patchApplicationById(id, body, authUserId, authUserRole);
 
     logger.info('Application patched successfully', {
       applicationId: authUserId,
@@ -308,5 +309,12 @@ export class ApplicationController {
     }
 
     return authUserId;
+  }
+
+  private getAuthUserRole(res: Response): string {
+    const authUserRole = res.locals.authUserRole as string;
+
+
+    return authUserRole;
   }
 }

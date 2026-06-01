@@ -39,6 +39,7 @@ import {
 } from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
+import { assertOwnershipOrAdmin } from '../shared/utils/auth.utils.js';
 
 export interface IApplicationService {
   getPaginatedApplications(
@@ -59,6 +60,7 @@ export interface IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
+    role: string
   ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
@@ -301,25 +303,31 @@ export default class ApplicationService implements IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
+    role: string 
   ): Promise<string> => {
+
     if (Object.keys(updates).length === 0) {
-      await this.assertOwnership(id, actorUserId);
       return this.getApplicationSlugById(id);
     }
+
     const [current] = await this.db
-      .select({ status: application.status })
+      .select()
       .from(application)
-      .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
+      .where(and(eq(application.id, id)))
       .limit(1);
 
     if (!current) {
-      await this.assertOwnership(id, actorUserId);
-      return this.getApplicationSlugById(id);
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
+
+    //Throws if not admin or the user is messing with another person's app
+    assertOwnershipOrAdmin(actorUserId, current.userId, role)
+
 
     const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = {
       ...updates,
     };
+
     if (current.status === 'CHANGES_REQUESTED') {
       setPayload.status = 'PENDING';
     }
@@ -330,7 +338,7 @@ export default class ApplicationService implements IApplicationService {
       [patched] = await this.db
         .update(application)
         .set(setPayload)
-        .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
+        .where(eq(application.id, id))
         .returning({ slug: application.slug });
     } catch (error) {
       const { message, constraint } = getDbErrorMessage(error);
@@ -341,8 +349,7 @@ export default class ApplicationService implements IApplicationService {
     }
 
     if (!patched) {
-      await this.assertOwnership(id, actorUserId);
-      return this.getApplicationSlugById(id);
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
     return patched.slug;
@@ -674,17 +681,4 @@ export default class ApplicationService implements IApplicationService {
     return !!result;
   };
 
-  private assertOwnership = async (applicationId: number, actorUserId: string): Promise<void> => {
-    const [app] = await this.db.select().from(application).where(eq(application.id, applicationId));
-
-    if (!app) {
-      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
-    }
-
-    if (app.userId !== actorUserId) {
-      throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
-    }
-
-    return;
-  };
 }
