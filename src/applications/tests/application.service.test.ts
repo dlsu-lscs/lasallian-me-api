@@ -285,14 +285,16 @@ describe('ApplicationService', () => {
   });
 
   describe('deleteApplicationById', () => {
-    it('should delete application when it exists', async () => {
+    it('should soft-delete application when it exists', async () => {
       const app = await createTestApp();
 
       expect(await service.deleteApplicationById(app.id, testUserId)).toBeUndefined();
 
-      // Verify in DB
-      const inDb = await db.select().from(application).where(eq(application.id, app.id));
-      expect(inDb).toHaveLength(0);
+      // Verify in DB that it is soft-deleted
+      const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+      expect(inDb).toBeDefined();
+      expect(inDb.status).toBe('REMOVED');
+      expect(inDb.rejectionReason).toBe('Deleted by owner');
     });
 
     it('should throw 404 when application not found', async () => {

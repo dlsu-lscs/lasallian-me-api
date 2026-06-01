@@ -8,7 +8,6 @@ import type {
   ReviewClaimRequest,
   ClaimRequestsListResponse,
 } from './dto/index.js';
-import { deleteS3ImageObjects } from '@/shared/infrastructure/s3/image-cleanup.js';
 import type { AdminApplicationsListFilters } from './dto/admin-applications-list-query.dto.js';
 import type { AdminClaimsListQuery } from './dto/admin-claims-list-query.dto.js';
 import {
@@ -419,8 +418,6 @@ export default class ApplicationService implements IApplicationService {
       .select({
         id: application.id,
         userId: application.userId,
-        icon: application.icon,
-        previewImages: application.previewImages,
       })
       .from(application)
       .where(eq(application.id, id))
@@ -434,9 +431,13 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
     }
 
-    await this.db.delete(application).where(eq(application.id, id));
-
-    await deleteS3ImageObjects([existing.icon, ...(existing.previewImages ?? [])]);
+    await this.db
+      .update(application)
+      .set({
+        status: 'REMOVED',
+        rejectionReason: 'Deleted by owner',
+      })
+      .where(eq(application.id, id));
   };
 
   getUserByApplicationId = async (
