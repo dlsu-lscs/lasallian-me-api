@@ -31,6 +31,18 @@ router.post('/', requireAuth, applicationController.createApplication);
 router.patch('/:id', requireAuth, applicationController.patchApplicationById);
 
 /**
+ * @route DELETE /api/applications/admin/:id
+ * @description Permanently delete a REMOVED application and its S3 media (Admin only)
+ * @access Private (Admin only)
+ */
+router.delete(
+  '/admin/:id',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.permanentlyDeleteApplicationById,
+);
+
+/**
  * @route DELETE /api/applications/:id
  * @description Delete an application by ID
  * @access Private
