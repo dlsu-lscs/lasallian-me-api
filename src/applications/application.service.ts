@@ -39,6 +39,7 @@ import {
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
 import { assertOwnershipOrAdmin } from '../shared/utils/auth.utils.js';
+import { deleteS3ImageObjects } from '@/shared/infrastructure/s3/image-cleanup.js';
 
 export interface IApplicationService {
   getPaginatedApplications(
@@ -63,6 +64,7 @@ export interface IApplicationService {
   ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
+  permanentlyDeleteApplicationById(id: number): Promise<void>;
   getUserByApplicationId(appId: number): Promise<{
     id: string;
     email: string;
@@ -438,6 +440,31 @@ export default class ApplicationService implements IApplicationService {
         rejectionReason: 'Deleted by owner',
       })
       .where(eq(application.id, id));
+  };
+
+  permanentlyDeleteApplicationById = async (id: number): Promise<void> => {
+    const [existing] = await this.db
+      .select({
+        id: application.id,
+        status: application.status,
+        icon: application.icon,
+        previewImages: application.previewImages,
+      })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (existing.status !== 'REMOVED') {
+      throw new HttpError(400, 'Only REMOVED applications can be permanently deleted', 'INVALID_STATUS');
+    }
+
+    await deleteS3ImageObjects([existing.icon, ...(existing.previewImages ?? [])]);
+
+    await this.db.delete(application).where(eq(application.id, id));
   };
 
   getUserByApplicationId = async (

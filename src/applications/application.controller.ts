@@ -199,6 +199,22 @@ export class ApplicationController {
   };
 
   /**
+   * Handles DELETE requests for permanently deleting a REMOVED application (Admin only)
+   * @route DELETE /api/applications/admin/:id
+   */
+  permanentlyDeleteApplicationById = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ApplicationIdParamsSchema.parse(req.params);
+
+    logger.debug('Permanently deleting application', { id });
+
+    await this.applicationService.permanentlyDeleteApplicationById(id);
+
+    logger.info('Application permanently deleted', { id });
+
+    res.status(204).send();
+  };
+
+  /**
    * Handles PATCH requests for admin review (approve/reject) of an application
    * @route PATCH /api/applications/admin/:id/review
    */
