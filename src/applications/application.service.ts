@@ -329,7 +329,7 @@ export default class ApplicationService implements IApplicationService {
       ...updates,
     };
 
-    if (current.status === 'CHANGES_REQUESTED') {
+    if (current.status === 'CHANGES_REQUESTED' || current.status === 'APPROVED') {
       setPayload.status = 'PENDING';
     }
 
