@@ -333,6 +333,22 @@ export default class ApplicationService implements IApplicationService {
       setPayload.status = 'PENDING';
     }
 
+    // Collect replaced S3 keys so they can be deleted after the DB update succeeds.
+    const orphanedKeys: Array<string | null | undefined> = [];
+
+    if (updates.icon !== undefined && updates.icon !== current.icon) {
+      orphanedKeys.push(current.icon);
+    }
+
+    if (updates.previewImages !== undefined) {
+      const incoming = new Set(updates.previewImages ?? []);
+      for (const key of current.previewImages ?? []) {
+        if (!incoming.has(key)) {
+          orphanedKeys.push(key);
+        }
+      }
+    }
+
     let patched: { slug: string } | undefined;
 
     try {
@@ -351,6 +367,10 @@ export default class ApplicationService implements IApplicationService {
 
     if (!patched) {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (orphanedKeys.length > 0) {
+      await deleteS3ImageObjects(orphanedKeys);
     }
 
     return patched.slug;
