@@ -7,6 +7,7 @@ export const PatchRatingRequestSchema = z
     comment: z
       .string()
       .trim()
+      .min(10)
       .max(255)
       .optional()
       .nullable()

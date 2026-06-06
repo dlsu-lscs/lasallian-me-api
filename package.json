@@ -23,10 +23,13 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:cleanup-removed": "tsx scripts/cleanup-removed.ts",
     "verify:emailer": "tsx src/shared/infrastructure/mailer.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@aws-sdk/client-s3": "^3.1049.0",
+    "@aws-sdk/s3-request-presigner": "^3.1049.0",
     "@electric-sql/pglite": "^0.3.16",
     "@types/nodemailer": "^8.0.0",
     "better-auth": "^1.6.9",
@@ -37,6 +40,7 @@
     "express": "^5.2.1",
     "nodemailer": "^8.0.7",
     "pg": "^8.20.0",
+    "resend": "^6.12.4",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.19.0",
     "zod": "^4.4.3"

@@ -31,11 +31,30 @@ router.post('/', requireAuth, applicationController.createApplication);
 router.patch('/:id', requireAuth, applicationController.patchApplicationById);
 
 /**
+ * @route DELETE /api/applications/admin/:id
+ * @description Permanently delete a REMOVED application and its S3 media (Admin only)
+ * @access Private (Admin only)
+ */
+router.delete(
+  '/admin/:id',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.permanentlyDeleteApplicationById,
+);
+
+/**
  * @route DELETE /api/applications/:id
  * @description Delete an application by ID
  * @access Private
  */
 router.delete('/:id', requireAuth, applicationController.deleteApplicationById);
+
+/**
+ * @route GET /api/applications/me
+ * @description Get all applications for the authenticated user (all statuses)
+ * @access Private
+ */
+router.get('/me', requireAuth, applicationController.getMyApplications);
 
 /**
  * @route GET /api/applications/admin
@@ -55,6 +74,56 @@ router.patch(
   requireRole('admin'),
   applicationController.reviewAdminApplicationById,
 );
+
+/**
+ * @route PATCH /api/applications/admin/:id/unclaimed
+ * @description Set the unclaimed flag on an application (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/admin/:id/unclaimed',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.setApplicationUnclaimedStatus,
+);
+
+/**
+ * @route GET /api/applications/admin/claims
+ * @description List all claim requests (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/admin/claims',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.getAdminClaimRequests,
+);
+
+/**
+ * @route PATCH /api/applications/admin/claims/:id/review
+ * @description Approve or decline a claim request (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/admin/claims/:id/review',
+  requireAuth,
+  requireRole('admin'),
+  applicationController.reviewAdminClaimRequest,
+);
+
+/**
+ * @route POST /api/applications/:id/claim
+ * @description Submit a claim request for an unclaimed application
+ * @access Private
+ */
+router.post('/:id/claim', requireAuth, applicationController.claimApplication);
+
+/**
+ * @route GET /api/applications/:slug/edit
+ * @description Get the owner's own application by slug (any status)
+ * @access Private
+ */
+router.get('/:slug/edit', requireAuth, applicationController.getOwnApplicationBySlug);
 
 /**
  * @route GET /api/applications/:slug

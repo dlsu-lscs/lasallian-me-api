@@ -14,12 +14,18 @@ export const CreateApplicationRequestSchema = z
       .trim()
       .nullish()
       .openapi({ example: 'A description of the application' }),
-    url: z.url('Invalid URL format').trim().nullish().openapi({ example: 'https://example.com' }),
-    githubLink: z.url('Invalid GitHub URL format').trim().openapi({ example: 'https://github.com/user/repo' }),
+    url: z.url('Invalid URL format').trim().openapi({ example: 'https://example.com' }),
+    githubLink: z.url('Invalid GitHub URL format').trim().nullish().openapi({ example: 'https://github.com/user/repo' }),
+    author: z.string().trim().max(255).nullish().openapi({ example: 'Jane Doe' }),
     previewImages: z
-      .array(z.url('Invalid image URL').trim())
+      .array(z.string().trim())
       .nullish()
       .openapi({ example: ['https://example.com/image1.jpg'] }),
+    icon: z
+      .string()
+      .trim()
+      .nullish()
+      .openapi({ example: 'https://example.com/icon.jpg' }),
     tags: z
       .array(z.string().trim().min(1))
       .nullish()

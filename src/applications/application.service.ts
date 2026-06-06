@@ -4,8 +4,12 @@ import type {
   ApplicationsListResponse,
   CreateApplicationRequest,
   PatchApplicationRequest,
+  ClaimApplicationRequest,
+  ReviewClaimRequest,
+  ClaimRequestsListResponse,
 } from './dto/index.js';
 import type { AdminApplicationsListFilters } from './dto/admin-applications-list-query.dto.js';
+import type { AdminClaimsListQuery } from './dto/admin-claims-list-query.dto.js';
 import {
   eq,
   SQL,
@@ -25,9 +29,17 @@ import {
 import { APPLICATION_CONSTANTS } from './application.constants.js';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { userFavorite, application, user } from './application.model.js';
+import {
+  userFavorite,
+  application,
+  user,
+  rating,
+  applicationClaimRequest,
+} from './application.model.js';
 import type { ReviewApplicationRequest } from './dto/review-application-request.dto.js';
 import { getDbErrorMessage } from '@/shared/utils/dbErrorUtils.js';
+import { assertOwnershipOrAdmin } from '../shared/utils/auth.utils.js';
+import { deleteS3ImageObjects } from '@/shared/infrastructure/s3/image-cleanup.js';
 
 export interface IApplicationService {
   getPaginatedApplications(
@@ -40,16 +52,37 @@ export interface IApplicationService {
     page: number,
     filters?: AdminApplicationsListFilters,
   ): Promise<ApplicationsListResponse>;
+  getMyApplications(userId: string): Promise<ApplicationsListResponse>;
   getApplicationBySlug(slug: string): Promise<ApplicationResponse>;
+  getOwnApplicationBySlug(slug: string, actorUserId: string): Promise<ApplicationResponse>;
   createApplication(app: CreateApplicationRequest, actorUserId: string): Promise<void>;
   patchApplicationById(
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
+    role: string
   ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
-  getUserByApplicationId(appId: number): Promise<{ id: string; email: string }>;
+  permanentlyDeleteApplicationById(id: number): Promise<void>;
+  getUserByApplicationId(appId: number): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    applicationTitle: string;
+    applicationSlug: string;
+  }>;
+  getUserById(userId: string): Promise<{ id: string; email: string; name: string }>;
+  getApplicationById(id: number): Promise<{ title: string; slug: string }>;
+  getAdminEmails(): Promise<string[]>;
+  setApplicationUnclaimed(id: number, unclaimed: boolean): Promise<void>;
+  submitClaimRequest(
+    applicationId: number,
+    userId: string,
+    input: ClaimApplicationRequest,
+  ): Promise<void>;
+  getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
+  reviewAdminClaimRequest(claimId: number, input: ReviewClaimRequest): Promise<void>;
 }
 
 export default class ApplicationService implements IApplicationService {
@@ -63,6 +96,21 @@ export default class ApplicationService implements IApplicationService {
     return this.getFilteredApplications(limit, page, filters, eq(application.status, 'APPROVED'));
   };
 
+  getMyApplications = async (userId: string): Promise<ApplicationsListResponse> => {
+    const allStatuses = or(
+      eq(application.status, 'PENDING'),
+      eq(application.status, 'APPROVED'),
+      eq(application.status, 'CHANGES_REQUESTED'),
+      eq(application.status, 'REMOVED'),
+    )!;
+    return this.getFilteredApplications(
+      APPLICATION_CONSTANTS.MAX_LIMIT,
+      1,
+      { userId },
+      allStatuses,
+    );
+  };
+
   getAdminApplications = async (
     limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT,
     page: number = APPLICATION_CONSTANTS.DEFAULT_PAGE,
@@ -72,7 +120,7 @@ export default class ApplicationService implements IApplicationService {
       ? eq(application.status, filters.status)
       : or(
           eq(application.status, 'PENDING'),
-          eq(application.status, 'REJECTED'),
+          eq(application.status, 'CHANGES_REQUESTED'),
           eq(application.status, 'REMOVED'),
         )!;
 
@@ -154,11 +202,14 @@ export default class ApplicationService implements IApplicationService {
       .select({
         ...getColumns(application),
         userEmail: user.email,
-        favoritesCount: count(userFavorite.userId),
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
       })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
       .where(whereClause)
       .groupBy(application.id, user.email)
       .orderBy(orderByClause)
@@ -184,12 +235,42 @@ export default class ApplicationService implements IApplicationService {
       .select({
         ...getColumns(application),
         userEmail: user.email,
-        favoritesCount: sql<number>`count(${userFavorite.userId})::int`,
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
       })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
       .where(and(eq(application.slug, slug), eq(application.status, 'APPROVED')))
+      .groupBy(application.id, user.email)
+      .limit(1);
+
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    return result;
+  };
+
+  getOwnApplicationBySlug = async (
+    slug: string,
+    actorUserId: string,
+  ): Promise<ApplicationResponse> => {
+    const [result] = await this.db
+      .select({
+        ...getColumns(application),
+        userEmail: user.email,
+        favoritesCount: sql<number>`count(distinct ${userFavorite.userId})::int`,
+        ratingCount: sql<number>`count(distinct ${rating.userId})::int`,
+        averageRating: sql<number | null>`avg(${rating.score})`,
+      })
+      .from(application)
+      .innerJoin(user, eq(application.userId, user.id))
+      .leftJoin(userFavorite, eq(application.id, userFavorite.applicationId))
+      .leftJoin(rating, eq(application.id, rating.applicationId))
+      .where(and(eq(application.slug, slug), eq(application.userId, actorUserId)))
       .groupBy(application.id, user.email)
       .limit(1);
 
@@ -223,18 +304,58 @@ export default class ApplicationService implements IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
+    role: string 
   ): Promise<string> => {
+
     if (Object.keys(updates).length === 0) {
-      await this.assertOwnership(id, actorUserId);
       return this.getApplicationSlugById(id);
     }
+
+    const [current] = await this.db
+      .select()
+      .from(application)
+      .where(and(eq(application.id, id)))
+      .limit(1);
+
+    if (!current) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    //Throws if not admin or the user is messing with another person's app
+    assertOwnershipOrAdmin(actorUserId, current.userId, role)
+
+
+    const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = {
+      ...updates,
+    };
+
+    if (current.status === 'CHANGES_REQUESTED' || current.status === 'APPROVED') {
+      setPayload.status = 'PENDING';
+    }
+
+    // Collect replaced S3 keys so they can be deleted after the DB update succeeds.
+    const orphanedKeys: Array<string | null | undefined> = [];
+
+    if (updates.icon !== undefined && updates.icon !== current.icon) {
+      orphanedKeys.push(current.icon);
+    }
+
+    if (updates.previewImages !== undefined) {
+      const incoming = new Set(updates.previewImages ?? []);
+      for (const key of current.previewImages ?? []) {
+        if (!incoming.has(key)) {
+          orphanedKeys.push(key);
+        }
+      }
+    }
+
     let patched: { slug: string } | undefined;
 
     try {
       [patched] = await this.db
         .update(application)
-        .set(updates)
-        .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
+        .set(setPayload)
+        .where(eq(application.id, id))
         .returning({ slug: application.slug });
     } catch (error) {
       const { message, constraint } = getDbErrorMessage(error);
@@ -245,8 +366,11 @@ export default class ApplicationService implements IApplicationService {
     }
 
     if (!patched) {
-      await this.assertOwnership(id, actorUserId);
-      return this.getApplicationSlugById(id);
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (orphanedKeys.length > 0) {
+      await deleteS3ImageObjects(orphanedKeys);
     }
 
     return patched.slug;
@@ -277,10 +401,13 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    if ((input.status === 'REJECTED' || input.status === 'REMOVED') && !input.rejectionReason) {
+    if (
+      (input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED') &&
+      !input.rejectionReason
+    ) {
       throw new HttpError(
         400,
-        'Rejection reason is required when rejecting or removing an application',
+        'Reason is required when requesting changes or removing an application',
         'VALIDATION_ERROR',
       );
     }
@@ -298,7 +425,9 @@ export default class ApplicationService implements IApplicationService {
       .set({
         status: input.status,
         rejectionReason:
-          input.status === 'REJECTED' || input.status === 'REMOVED' ? input.rejectionReason : null,
+          input.status === 'CHANGES_REQUESTED' || input.status === 'REMOVED'
+            ? input.rejectionReason
+            : null,
       })
       .where(eq(application.id, id))
       .returning();
@@ -307,35 +436,263 @@ export default class ApplicationService implements IApplicationService {
   };
 
   deleteApplicationById = async (id: number, actorUserId: string): Promise<void> => {
-    const [deleted] = await this.db
-      .delete(application)
-      .where(and(eq(application.id, id), eq(application.userId, actorUserId)))
-      .returning();
+    const [existing] = await this.db
+      .select({
+        id: application.id,
+        userId: application.userId,
+      })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
 
-    if (!deleted) {
-      const [exists] = await this.db
-        .select({ id: application.id })
-        .from(application)
-        .where(eq(application.id, id))
-        .limit(1);
-
-      if (exists) {
-        throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
-      }
+    if (!existing) {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
-    return;
+    if (existing.userId !== actorUserId) {
+      throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
+    }
+
+    await this.db
+      .update(application)
+      .set({
+        status: 'REMOVED',
+        rejectionReason: 'Deleted by owner',
+      })
+      .where(eq(application.id, id));
   };
 
-  getUserByApplicationId = async (appId: number): Promise<{ id: string; email: string }> => {
+  permanentlyDeleteApplicationById = async (id: number): Promise<void> => {
+    const [existing] = await this.db
+      .select({
+        id: application.id,
+        status: application.status,
+        icon: application.icon,
+        previewImages: application.previewImages,
+      })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (existing.status !== 'REMOVED') {
+      throw new HttpError(400, 'Only REMOVED applications can be permanently deleted', 'INVALID_STATUS');
+    }
+
+    await deleteS3ImageObjects([existing.icon, ...(existing.previewImages ?? [])]);
+
+    await this.db.delete(application).where(eq(application.id, id));
+  };
+
+  getUserByApplicationId = async (
+    appId: number,
+  ): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    applicationTitle: string;
+    applicationSlug: string;
+  }> => {
     const [result] = await this.db
-      .select({ id: user.id, email: user.email })
+      .select({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        applicationTitle: application.title,
+        applicationSlug: application.slug,
+      })
       .from(application)
       .innerJoin(user, eq(application.userId, user.id))
       .where(eq(application.id, appId))
       .limit(1);
     return result;
+  };
+
+  setApplicationUnclaimed = async (id: number, unclaimed: boolean): Promise<void> => {
+    const [existing] = await this.db
+      .select({ id: application.id })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    await this.db.update(application).set({ unclaimed }).where(eq(application.id, id));
+  };
+
+  submitClaimRequest = async (
+    applicationId: number,
+    userId: string,
+    input: ClaimApplicationRequest,
+  ): Promise<void> => {
+    const [app] = await this.db
+      .select({ id: application.id, unclaimed: application.unclaimed })
+      .from(application)
+      .where(eq(application.id, applicationId))
+      .limit(1);
+
+    if (!app) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+
+    if (!app.unclaimed) {
+      throw new HttpError(409, 'Application is not unclaimed', 'INVALID_APPLICATION_STATE');
+    }
+
+    const [existing] = await this.db
+      .select({ id: applicationClaimRequest.id, status: applicationClaimRequest.status })
+      .from(applicationClaimRequest)
+      .where(
+        and(
+          eq(applicationClaimRequest.applicationId, applicationId),
+          eq(applicationClaimRequest.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (existing && (existing.status === 'PENDING' || existing.status === 'APPROVED')) {
+      throw new HttpError(
+        409,
+        'You already have an active claim for this application',
+        'DUPLICATE_CLAIM',
+      );
+    }
+
+    if (existing) {
+      await this.db
+        .update(applicationClaimRequest)
+        .set({ additionalInfo: input.additionalInfo ?? null, status: 'PENDING' })
+        .where(eq(applicationClaimRequest.id, existing.id));
+    } else {
+      await this.db.insert(applicationClaimRequest).values({
+        applicationId,
+        userId,
+        additionalInfo: input.additionalInfo ?? null,
+        status: 'PENDING',
+      });
+    }
+  };
+
+  getAdminClaimRequests = async (
+    query: AdminClaimsListQuery,
+  ): Promise<ClaimRequestsListResponse> => {
+    const { page, limit, status } = query;
+    const offset = (page - 1) * limit;
+
+    const statusCondition = status ? eq(applicationClaimRequest.status, status) : undefined;
+
+    const whereClause = statusCondition ?? sql`1=1`;
+
+    const [{ total }] = await this.db
+      .select({ total: count() })
+      .from(applicationClaimRequest)
+      .where(whereClause);
+
+    const rows = await this.db
+      .select({
+        id: applicationClaimRequest.id,
+        applicationId: applicationClaimRequest.applicationId,
+        applicationTitle: application.title,
+        applicationSlug: application.slug,
+        userId: applicationClaimRequest.userId,
+        userName: user.name,
+        userEmail: user.email,
+        userImage: user.image,
+        additionalInfo: applicationClaimRequest.additionalInfo,
+        status: applicationClaimRequest.status,
+        createdAt: applicationClaimRequest.createdAt,
+        updatedAt: applicationClaimRequest.updatedAt,
+      })
+      .from(applicationClaimRequest)
+      .innerJoin(application, eq(applicationClaimRequest.applicationId, application.id))
+      .innerJoin(user, eq(applicationClaimRequest.userId, user.id))
+      .where(whereClause)
+      .orderBy(desc(applicationClaimRequest.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      data: rows,
+      meta: {
+        page,
+        limit,
+        count: rows.length,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  };
+
+  reviewAdminClaimRequest = async (claimId: number, input: ReviewClaimRequest): Promise<void> => {
+    const [claim] = await this.db
+      .select()
+      .from(applicationClaimRequest)
+      .where(eq(applicationClaimRequest.id, claimId))
+      .limit(1);
+
+    if (!claim) {
+      throw new HttpError(404, 'Claim request not found', 'NOT_FOUND');
+    }
+
+    if (claim.status !== 'PENDING') {
+      throw new HttpError(409, 'Only PENDING claims can be reviewed', 'INVALID_APPLICATION_STATE');
+    }
+
+    if (input.status === 'APPROVED') {
+      await this.db
+        .update(application)
+        .set({ userId: claim.userId, unclaimed: false })
+        .where(eq(application.id, claim.applicationId));
+
+      await this.db
+        .update(applicationClaimRequest)
+        .set({ status: 'DECLINED' })
+        .where(
+          and(
+            eq(applicationClaimRequest.applicationId, claim.applicationId),
+            eq(applicationClaimRequest.status, 'PENDING'),
+          ),
+        );
+    }
+
+    await this.db
+      .update(applicationClaimRequest)
+      .set({ status: input.status })
+      .where(eq(applicationClaimRequest.id, claimId));
+  };
+
+  getUserById = async (userId: string): Promise<{ id: string; email: string; name: string }> => {
+    const [result] = await this.db
+      .select({ id: user.id, email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return result;
+  };
+
+  getApplicationById = async (id: number): Promise<{ title: string; slug: string }> => {
+    const [result] = await this.db
+      .select({ title: application.title, slug: application.slug })
+      .from(application)
+      .where(eq(application.id, id))
+      .limit(1);
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
+    return result;
+  };
+
+  getAdminEmails = async (): Promise<string[]> => {
+    const results = await this.db
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.role, 'admin'));
+    return results.map((r) => r.email);
   };
 
   private slugExists = async (slug: string): Promise<boolean> => {
@@ -372,17 +729,4 @@ export default class ApplicationService implements IApplicationService {
     return !!result;
   };
 
-  private assertOwnership = async (applicationId: number, actorUserId: string): Promise<void> => {
-    const [app] = await this.db.select().from(application).where(eq(application.id, applicationId));
-
-    if (!app) {
-      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
-    }
-
-    if (app.userId !== actorUserId) {
-      throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
-    }
-
-    return;
-  };
 }

@@ -52,9 +52,9 @@ export default class RatingService implements IRatingService {
     return app;
   };
 
-  private getUserById = async (userId: string): Promise<{ id: string; email: string }> => {
+  private getUserById = async (userId: string): Promise<{ id: string; email: string; name: string }> => {
     const [foundUser] = await this.db
-      .select({ id: user.id, email: user.email })
+      .select({ id: user.id, email: user.email, name: user.name })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
@@ -86,6 +86,7 @@ export default class RatingService implements IRatingService {
       ...rating,
       isAnonymous,
       userEmail: isAnonymous ? null : rating.userEmail,
+      userName: isAnonymous ? null : rating.userName,
     });
   };
 
@@ -104,6 +105,7 @@ export default class RatingService implements IRatingService {
           comment: rating.comment,
           isAnonymous: rating.isAnonymous,
           userEmail: user.email,
+          userName: user.name,
         })
         .from(rating)
         .innerJoin(user, eq(rating.userId, user.id))
@@ -160,6 +162,7 @@ export default class RatingService implements IRatingService {
       comment: payload.comment ?? null,
       isAnonymous: payload.isAnonymous ?? false,
       userEmail: foundUser.email,
+      userName: foundUser.name,
     });
   };
 
@@ -192,7 +195,7 @@ export default class RatingService implements IRatingService {
           comment: rating.comment,
           isAnonymous: rating.isAnonymous,
         }),
-      this.db.select({ email: user.email }).from(user).where(eq(user.id, userId)).limit(1),
+      this.db.select({ email: user.email, name: user.name }).from(user).where(eq(user.id, userId)).limit(1),
     ]);
 
     const [updated] = updatedRows;
@@ -205,6 +208,7 @@ export default class RatingService implements IRatingService {
     return this.formatRating({
       ...updated,
       userEmail: owner?.email ?? null,
+      userName: owner?.name ?? null,
     });
   };
 
@@ -226,7 +230,7 @@ export default class RatingService implements IRatingService {
           and(eq(rating.userId, existing.userId), eq(rating.applicationId, existing.applicationId)),
         )
         .returning({ applicationId: rating.applicationId }),
-      this.db.select({ email: user.email }).from(user).where(eq(user.id, userId)).limit(1),
+      this.db.select({ email: user.email, name: user.name }).from(user).where(eq(user.id, userId)).limit(1),
     ]);
 
     const [deleted] = deletedRows;
@@ -242,6 +246,7 @@ export default class RatingService implements IRatingService {
       comment: existing.comment,
       isAnonymous: existing.isAnonymous ?? false,
       userEmail: owner?.email ?? null,
+      userName: owner?.name ?? null,
     });
   };
 

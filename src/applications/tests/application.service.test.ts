@@ -237,6 +237,7 @@ describe('ApplicationService', () => {
         slug: 'new-unique-app',
         title: 'New Application',
         description: 'A new app',
+        url: 'https://example.com/new-unique-app',
         githubLink: 'https://github.com/test/test-app',
         tags: ['new'],
       };
@@ -255,6 +256,7 @@ describe('ApplicationService', () => {
         slug: 'existing-slug',
         title: 'Duplicate',
         description: 'A new app',
+        url: 'https://example.com/existing-slug',
         githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
@@ -270,6 +272,7 @@ describe('ApplicationService', () => {
         slug: 'missing-user-app',
         title: 'Missing User',
         description: 'Should fail because authenticated user does not exist',
+        url: 'https://example.com/missing-user-app',
         githubLink: 'https://github.com/test/test-app',
         tags: [],
       };
@@ -282,14 +285,16 @@ describe('ApplicationService', () => {
   });
 
   describe('deleteApplicationById', () => {
-    it('should delete application when it exists', async () => {
+    it('should soft-delete application when it exists', async () => {
       const app = await createTestApp();
 
       expect(await service.deleteApplicationById(app.id, testUserId)).toBeUndefined();
 
-      // Verify in DB
-      const inDb = await db.select().from(application).where(eq(application.id, app.id));
-      expect(inDb).toHaveLength(0);
+      // Verify in DB that it is soft-deleted
+      const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+      expect(inDb).toBeDefined();
+      expect(inDb.status).toBe('REMOVED');
+      expect(inDb.rejectionReason).toBe('Deleted by owner');
     });
 
     it('should throw 404 when application not found', async () => {
@@ -327,23 +332,23 @@ describe('ApplicationService', () => {
       expect(reviewed.rejectionReason).toBeNull();
     });
 
-    it('should reject a pending application with rejection reason', async () => {
+    it('should request changes on a pending application with a reason', async () => {
       const app = await createTestApp({ status: 'PENDING' });
 
       await service.reviewAdminApplicationById(app.id, {
-        status: 'REJECTED',
+        status: 'CHANGES_REQUESTED',
         rejectionReason: 'Missing details',
       });
 
       const [reviewed] = await db.select().from(application).where(eq(application.id, app.id));
 
-      expect(reviewed.status).toBe('REJECTED');
+      expect(reviewed.status).toBe('CHANGES_REQUESTED');
       expect(reviewed.rejectionReason).toBe('Missing details');
     });
 
-    it('should approve a rejected application when admin changes mind', async () => {
+    it('should approve a changes-requested application when admin changes mind', async () => {
       const app = await createTestApp({
-        status: 'REJECTED',
+        status: 'CHANGES_REQUESTED',
         rejectionReason: 'Initial rejection',
       });
 
@@ -375,12 +380,12 @@ describe('ApplicationService', () => {
       expect(reviewed.rejectionReason).toBe('Removed after admin review');
     });
 
-    it('should throw 400 when rejecting without rejection reason', async () => {
+    it('should throw 400 when requesting changes without a reason', async () => {
       const app = await createTestApp({ status: 'PENDING' });
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          status: 'REJECTED',
+          status: 'CHANGES_REQUESTED',
           rejectionReason: null,
         }),
       ).rejects.toMatchObject({
@@ -422,8 +427,8 @@ describe('ApplicationService', () => {
 
       await expect(
         service.reviewAdminApplicationById(app.id, {
-          status: 'REJECTED',
-          rejectionReason: 'late rejection',
+          status: 'CHANGES_REQUESTED',
+          rejectionReason: 'late change request',
         }),
       ).rejects.toMatchObject({
         statusCode: 409,
@@ -448,7 +453,7 @@ describe('ApplicationService', () => {
     it('should update application when it exists', async () => {
       const app = await createTestApp({ title: 'Old Title' });
 
-      await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId);
+      await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 
@@ -461,7 +466,7 @@ describe('ApplicationService', () => {
 
     it('should throw 404 when application not found', async () => {
       await expect(
-        service.patchApplicationById(99999, { title: 'New Title' }, testUserId),
+        service.patchApplicationById(99999, { title: 'New Title' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 404,
         code: 'NOT_FOUND',
@@ -473,7 +478,7 @@ describe('ApplicationService', () => {
       const appB = await createTestApp({ slug: 'slug-b' });
 
       await expect(
-        service.patchApplicationById(appB.id, { slug: 'slug-a' }, testUserId),
+        service.patchApplicationById(appB.id, { slug: 'slug-a' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 409,
         code: 'DUPLICATE_SLUG',
@@ -483,7 +488,7 @@ describe('ApplicationService', () => {
     it('should allow updating to the same slug', async () => {
       const app = await createTestApp({ slug: 'my-slug', title: 'Old' });
 
-      await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId);
+      await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug('my-slug');
 
@@ -494,7 +499,7 @@ describe('ApplicationService', () => {
     it('should allow partial updates', async () => {
       const app = await createTestApp({ title: 'Title', description: 'Desc' });
 
-      await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId);
+      await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 
@@ -506,7 +511,7 @@ describe('ApplicationService', () => {
       const app = await createTestApp({ title: 'Title', userId: otherUserId });
 
       await expect(
-        service.patchApplicationById(app.id, { title: 'New Title' }, testUserId),
+        service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user"),
       ).rejects.toMatchObject({
         statusCode: 403,
         code: 'FORBIDDEN',
@@ -516,7 +521,7 @@ describe('ApplicationService', () => {
     it('should return current application for empty patch', async () => {
       const app = await createTestApp({ title: 'Title' });
 
-      await service.patchApplicationById(app.id, {}, testUserId);
+      await service.patchApplicationById(app.id, {}, testUserId, "user");
 
       const result = await service.getApplicationBySlug(app.slug);
 

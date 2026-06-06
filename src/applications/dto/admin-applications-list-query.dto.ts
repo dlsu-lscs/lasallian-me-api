@@ -5,7 +5,7 @@ import { ApplicationsListQuerySchema } from './applications-list-query.dto.js';
  * Zod schema for admin applications moderation queue query parameters
  */
 export const AdminApplicationsListQuerySchema = ApplicationsListQuerySchema.extend({
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'REMOVED']).nullish().openapi({
+  status: z.enum(['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REMOVED']).nullish().openapi({
     example: 'PENDING',
     description: 'Filter admin applications list by a single status',
   }),
