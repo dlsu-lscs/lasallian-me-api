@@ -66,6 +66,7 @@ export const application = pgTable(
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
+    viewCount: integer('view_count').default(0).notNull(),
   },
   (table) => [
     index('application_user_id_idx').on(table.userId),
@@ -78,6 +79,7 @@ export const application = pgTable(
       foreignColumns: [user.id],
       name: 'applications_user_id_users_id_fk',
     }).onDelete('cascade'),
+    index('application_view_count_idx').on(table.viewCount),
   ],
 );
 
