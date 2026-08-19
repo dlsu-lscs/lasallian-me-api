@@ -61,12 +61,12 @@ export const application = pgTable(
     status: applicationApprovalStatus('status').default('PENDING').notNull(),
     rejectionReason: text('rejection_reason'),
     unclaimed: boolean('unclaimed').notNull().default(false),
+    viewCount: integer('view_count').default(0).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
-    viewCount: integer('view_count').default(0).notNull(),
   },
   (table) => [
     index('application_user_id_idx').on(table.userId),
@@ -74,12 +74,12 @@ export const application = pgTable(
     index('application_updated_at_idx').on(table.updatedAt),
     index('application_title_idx').on(table.title),
     index('application_status_idx').on(table.status),
+    index('application_view_count_idx').on(table.viewCount),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
       name: 'applications_user_id_users_id_fk',
     }).onDelete('cascade'),
-    index('application_view_count_idx').on(table.viewCount),
   ],
 );
 
