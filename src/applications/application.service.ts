@@ -60,7 +60,7 @@ export interface IApplicationService {
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
-    role: string
+    role: string,
   ): Promise<string>;
   reviewAdminApplicationById(id: number, input: ReviewApplicationRequest): Promise<void>;
   deleteApplicationById(id: number, actorUserId: string): Promise<void>;
@@ -83,6 +83,7 @@ export interface IApplicationService {
   ): Promise<void>;
   getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
   reviewAdminClaimRequest(claimId: number, input: ReviewClaimRequest): Promise<void>;
+  incrementViewCount(slug: string): Promise<void>; 
 }
 
 export default class ApplicationService implements IApplicationService {
@@ -173,24 +174,45 @@ export default class ApplicationService implements IApplicationService {
       );
     }
 
-    let orderByColumn:
-      | typeof application.createdAt
-      | typeof application.updatedAt
-      | typeof application.title;
+    // Popularity & standard sort expressions
+    const favoritesCountExpr = sql`count(distinct ${userFavorite.userId})`;
+    const ratingCountExpr = sql`count(distinct ${rating.userId})`;
+    const avgRatingExpr = sql`avg(${rating.score})`;
+
+    let orderByClause: SQL;
     switch (sortBy) {
       case 'title':
-        orderByColumn = application.title;
+        orderByClause = sortOrder === 'asc' ? asc(application.title) : desc(application.title);
         break;
       case 'updatedAt':
-        orderByColumn = application.updatedAt;
+        orderByClause = sortOrder === 'asc' ? asc(application.updatedAt) : desc(application.updatedAt);
+        break;
+      case 'viewCount':
+        orderByClause = sortOrder === 'asc' ? asc(application.viewCount) : desc(application.viewCount);
+        break;
+      case 'favoritesCount':
+        orderByClause =
+          sortOrder === 'asc'
+            ? sql`${favoritesCountExpr} ASC, ${application.id} ASC`
+            : sql`${favoritesCountExpr} DESC, ${application.id} DESC`;
+        break;
+      case 'ratingCount':
+        orderByClause =
+          sortOrder === 'asc'
+            ? sql`${ratingCountExpr} ASC, ${application.id} ASC`
+            : sql`${ratingCountExpr} DESC, ${application.id} DESC`;
+        break;
+      case 'averageRating':
+        orderByClause =
+          sortOrder === 'asc'
+            ? sql`${avgRatingExpr} ASC NULLS FIRST, ${application.id} ASC`
+            : sql`${avgRatingExpr} DESC NULLS LAST, ${application.id} DESC`;
         break;
       case 'createdAt':
       default:
-        orderByColumn = application.createdAt;
+        orderByClause = sortOrder === 'asc' ? asc(application.createdAt) : desc(application.createdAt);
         break;
     }
-
-    const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     const whereClause = and(...conditions);
 
@@ -228,6 +250,20 @@ export default class ApplicationService implements IApplicationService {
         totalPages,
       },
     };
+  };
+
+  incrementViewCount = async (slug: string): Promise<void> => {
+    const [result] = await this.db
+      .update(application)
+      .set({
+        viewCount: sql`${application.viewCount} + 1`,
+      })
+      .where(and(eq(application.slug, slug), eq(application.status, 'APPROVED')))
+      .returning({ id: application.id });
+
+    if (!result) {
+      throw new HttpError(404, 'Application not found', 'NOT_FOUND');
+    }
   };
 
   getApplicationBySlug = async (slug: string): Promise<ApplicationResponse> => {
@@ -295,18 +331,16 @@ export default class ApplicationService implements IApplicationService {
       userId: actorUserId,
       status: 'PENDING',
       rejectionReason: null,
+      viewCount: 0,
     });
-
-    return;
   };
 
   patchApplicationById = async (
     id: number,
     updates: PatchApplicationRequest,
     actorUserId: string,
-    role: string 
+    role: string,
   ): Promise<string> => {
-
     if (Object.keys(updates).length === 0) {
       return this.getApplicationSlugById(id);
     }
@@ -321,9 +355,7 @@ export default class ApplicationService implements IApplicationService {
       throw new HttpError(404, 'Application not found', 'NOT_FOUND');
     }
 
-    //Throws if not admin or the user is messing with another person's app
-    assertOwnershipOrAdmin(actorUserId, current.userId, role)
-
+    assertOwnershipOrAdmin(actorUserId, current.userId, role);
 
     const setPayload: PatchApplicationRequest & { status?: typeof application.status._.data } = {
       ...updates,
@@ -333,7 +365,6 @@ export default class ApplicationService implements IApplicationService {
       setPayload.status = 'PENDING';
     }
 
-    // Collect replaced S3 keys so they can be deleted after the DB update succeeds.
     const orphanedKeys: Array<string | null | undefined> = [];
 
     if (updates.icon !== undefined && updates.icon !== current.icon) {
@@ -359,9 +390,7 @@ export default class ApplicationService implements IApplicationService {
         .returning({ slug: application.slug });
     } catch (error) {
       const { message, constraint } = getDbErrorMessage(error);
-
       console.error('Database operation failed:', { message, constraint, originalError: error });
-
       throw new HttpError(409, 'Application with this slug already exists', 'DUPLICATE_SLUG');
     }
 
@@ -376,9 +405,6 @@ export default class ApplicationService implements IApplicationService {
     return patched.slug;
   };
 
-  /**
-   * Approve or reject an application (admin action)
-   */
   reviewAdminApplicationById = async (
     id: number,
     input: ReviewApplicationRequest,
@@ -431,8 +457,6 @@ export default class ApplicationService implements IApplicationService {
       })
       .where(eq(application.id, id))
       .returning();
-
-    return;
   };
 
   deleteApplicationById = async (id: number, actorUserId: string): Promise<void> => {
@@ -585,7 +609,6 @@ export default class ApplicationService implements IApplicationService {
     const offset = (page - 1) * limit;
 
     const statusCondition = status ? eq(applicationClaimRequest.status, status) : undefined;
-
     const whereClause = statusCondition ?? sql`1=1`;
 
     const [{ total }] = await this.db
@@ -728,5 +751,4 @@ export default class ApplicationService implements IApplicationService {
 
     return !!result;
   };
-
 }
