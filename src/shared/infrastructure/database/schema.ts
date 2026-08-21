@@ -37,6 +37,8 @@ export const user = pgTable('user', {
   banned: boolean('banned'),
   banReason: text('ban_reason'),
   banExpires: timestamp('ban_expires', { precision: 6, withTimezone: true }),
+  tosAccepted: boolean('tos_accepted').default(false).notNull(),
+  tosAcceptedAt: timestamp('tos_accepted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()

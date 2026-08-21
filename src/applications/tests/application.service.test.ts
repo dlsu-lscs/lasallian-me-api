@@ -455,7 +455,7 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug(app.slug);
+      const result = await service.getOwnApplicationBySlug(app.slug, testUserId);
 
       expect(result.title).toBe('New Title');
 
@@ -490,7 +490,7 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug('my-slug');
+      const result = await service.getOwnApplicationBySlug('my-slug', testUserId);
 
       expect(result.title).toBe('New');
       expect(result.slug).toBe('my-slug');
@@ -501,7 +501,7 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug(app.slug);
+      const result = await service.getOwnApplicationBySlug(app.slug, testUserId);
 
       expect(result.description).toBe('New Desc');
       expect(result.title).toBe('Title');
