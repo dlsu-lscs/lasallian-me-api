@@ -50,7 +50,15 @@ export const ApplicationsListQuerySchema = z
 
     // Sorting options
     sortBy: z
-      .enum(['createdAt', 'updatedAt', 'title'])
+      .enum([
+        'createdAt',
+        'updatedAt',
+        'title',
+        'viewCount',
+        'favoritesCount',
+        'ratingCount',
+        'averageRating',
+      ])
       .default(APPLICATION_CONSTANTS.DEFAULT_SORT_BY)
       .nullish()
       .openapi({ example: 'createdAt', description: 'Field to sort by' }),
