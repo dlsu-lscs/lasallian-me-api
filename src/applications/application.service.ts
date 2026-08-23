@@ -361,7 +361,9 @@ export default class ApplicationService implements IApplicationService {
       ...updates,
     };
 
-    if (current.status === 'CHANGES_REQUESTED' || current.status === 'APPROVED') {
+    // Author edits send the app back for re-review; admin edits are already
+    // reviewed by definition, so they leave the current status untouched.
+    if (role !== 'admin' && (current.status === 'CHANGES_REQUESTED' || current.status === 'APPROVED')) {
       setPayload.status = 'PENDING';
     }
 
