@@ -282,8 +282,22 @@ export default class ApplicationService implements IApplicationService {
   };
 
   createApplication = async (app: CreateApplicationRequest, actorUserId: string): Promise<void> => {
-    if (!(await this.userExists(actorUserId))) {
+    const [existingUser] = await this.db
+      .select({ id: user.id, tosAccepted: user.tosAccepted })
+      .from(user)
+      .where(eq(user.id, actorUserId))
+      .limit(1);
+
+    if (!existingUser) {
       throw new HttpError(404, 'User not found', 'NOT_FOUND');
+    }
+
+    if (!existingUser.tosAccepted) {
+      throw new HttpError(
+        403,
+        'You must accept the Terms of Service before submitting an application',
+        'TOS_NOT_ACCEPTED',
+      );
     }
 
     if (await this.slugExists(app.slug)) {
