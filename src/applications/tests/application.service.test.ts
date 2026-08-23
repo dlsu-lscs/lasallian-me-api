@@ -456,9 +456,12 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug(app.slug);
+      // An author's edit sends the app back to PENDING, so it is no longer
+      // visible through the APPROVED-only public lookup.
+      const result = await service.getOwnApplicationBySlug(app.slug, testUserId);
 
       expect(result.title).toBe('New Title');
+      expect(result.status).toBe('PENDING');
 
       // Verify in DB
       const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
@@ -491,7 +494,7 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { slug: 'my-slug', title: 'New' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug('my-slug');
+      const result = await service.getOwnApplicationBySlug('my-slug', testUserId);
 
       expect(result.title).toBe('New');
       expect(result.slug).toBe('my-slug');
@@ -502,10 +505,38 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { description: 'New Desc' }, testUserId, "user");
 
-      const result = await service.getApplicationBySlug(app.slug);
+      const result = await service.getOwnApplicationBySlug(app.slug, testUserId);
 
       expect(result.description).toBe('New Desc');
       expect(result.title).toBe('Title');
+    });
+
+    it('should reset an approved app to PENDING when the author edits it', async () => {
+      const app = await createTestApp({ status: 'APPROVED', title: 'Old' });
+
+      await service.patchApplicationById(app.id, { title: 'New' }, testUserId, "user");
+
+      const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+      expect(inDb.status).toBe('PENDING');
+    });
+
+    it('should keep an approved app APPROVED when an admin edits it', async () => {
+      const app = await createTestApp({ status: 'APPROVED', title: 'Old' });
+
+      await service.patchApplicationById(app.id, { title: 'New' }, otherUserId, "admin");
+
+      const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+      expect(inDb.title).toBe('New');
+      expect(inDb.status).toBe('APPROVED');
+    });
+
+    it('should keep a CHANGES_REQUESTED app unchanged when an admin edits it', async () => {
+      const app = await createTestApp({ status: 'CHANGES_REQUESTED', title: 'Old' });
+
+      await service.patchApplicationById(app.id, { title: 'New' }, otherUserId, "admin");
+
+      const [inDb] = await db.select().from(application).where(eq(application.id, app.id));
+      expect(inDb.status).toBe('CHANGES_REQUESTED');
     });
 
     it("should throw 403 when updating another user's application", async () => {
