@@ -733,14 +733,4 @@ export default class ApplicationService implements IApplicationService {
     return result.slug;
   };
 
-  private userExists = async (userId: string): Promise<boolean> => {
-    const [result] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
-
-    return !!result;
-  };
-
 }

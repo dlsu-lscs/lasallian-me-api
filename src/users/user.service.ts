@@ -1,12 +1,11 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { HttpError } from '@/shared/middleware/error.middleware.js';
-import { assertOwnershipOrAdmin } from '@/shared/utils/auth.utils.js';
 import { user } from './user.model.js';
-import type { UserResponse } from './dto/index.js';
+import type { UserTosResponse } from './dto/index.js';
 
 export interface IUserService {
-  acceptTos(email: string, actorUserId: string, actorRole: string): Promise<UserResponse>;
+  acceptTos(email: string, actorUserId: string): Promise<UserTosResponse>;
 }
 
 export default class UserService implements IUserService {
@@ -15,8 +14,7 @@ export default class UserService implements IUserService {
   acceptTos = async (
     email: string,
     actorUserId: string,
-    actorRole: string,
-  ): Promise<UserResponse> => {
+  ): Promise<UserTosResponse> => {
     const [existingUser] = await this.db
       .select()
       .from(user)
@@ -27,7 +25,9 @@ export default class UserService implements IUserService {
       throw new HttpError(404, 'User not found', 'NOT_FOUND');
     }
 
-    assertOwnershipOrAdmin(actorUserId, existingUser.id, actorRole);
+    if (actorUserId !== existingUser.id) {
+      throw new HttpError(403, 'Forbidden', 'FORBIDDEN');
+    }
 
     const now = new Date();
     const [updatedUser] = await this.db

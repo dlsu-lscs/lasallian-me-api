@@ -44,7 +44,6 @@ describe('UserController', () => {
     mockResponse = {
       locals: {
         authUserId: 'user-123',
-        authUserRole: 'user',
       },
       status: responseStatus,
     };
@@ -57,35 +56,35 @@ describe('UserController', () => {
   });
 
   describe('acceptTos', () => {
-    it('should successfully accept ToS and return 200 with UserResponse', async () => {
+    it('should successfully accept ToS and return 200 with UserTosResponse shape', async () => {
       await controller.acceptTos(mockRequest as Request, mockResponse as Response);
 
       expect(mockUserService.acceptTos).toHaveBeenCalledWith(
         'jane@example.com',
         'user-123',
-        'user',
       );
       expect(responseStatus).toHaveBeenCalledWith(200);
-      expect(responseJson).toHaveBeenCalledWith(expect.objectContaining({
+      expect(responseJson).toHaveBeenCalledWith({
         id: 'user-123',
         email: 'jane@example.com',
         tosAccepted: true,
-      }));
-    });
-
-    it('should throw 401 when authUserId is missing from res.locals', async () => {
-      mockResponse.locals = { authUserRole: 'user' };
-
-      await expect(
-        controller.acceptTos(mockRequest as Request, mockResponse as Response),
-      ).rejects.toMatchObject({
-        statusCode: 401,
-        code: 'UNAUTHORIZED',
+        tosAcceptedAt: mockDate,
       });
     });
 
-    it('should throw 401 when authUserRole is missing from res.locals', async () => {
-      mockResponse.locals = { authUserId: 'user-123' };
+    it('should return only UserTosResponse fields, not the full user object', async () => {
+      await controller.acceptTos(mockRequest as Request, mockResponse as Response);
+
+      const returnedPayload = responseJson.mock.calls[0][0];
+      expect(returnedPayload).not.toHaveProperty('name');
+      expect(returnedPayload).not.toHaveProperty('role');
+      expect(returnedPayload).not.toHaveProperty('createdAt');
+      expect(returnedPayload).not.toHaveProperty('updatedAt');
+      expect(returnedPayload).not.toHaveProperty('banned');
+    });
+
+    it('should throw 401 when authUserId is missing from res.locals', async () => {
+      mockResponse.locals = {};
 
       await expect(
         controller.acceptTos(mockRequest as Request, mockResponse as Response),

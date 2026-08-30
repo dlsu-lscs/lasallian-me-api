@@ -1,13 +1,13 @@
 import { registry, ErrorResponseSchema } from '@/shared/config/openapi.js';
-import { UserEmailParamsSchema, UserResponseSchema } from './dto/index.js';
+import { UserEmailParamsSchema, UserTosResponseSchema } from './dto/index.js';
 
 registry.register('UserEmailParams', UserEmailParamsSchema);
-registry.register('UserResponse', UserResponseSchema);
+registry.register('UserTosResponse', UserTosResponseSchema);
 
 registry.registerPath({
   method: 'patch',
   path: '/api/users/{email}/tos',
-  description: 'Accept terms and conditions for a user (authenticated user or admin)',
+  description: 'Accept terms and conditions (owner-only, no admin override)',
   summary: 'Accept terms and conditions',
   security: [{ SessionAuth: [] }],
   tags: ['Users'],
@@ -19,7 +19,7 @@ registry.registerPath({
       description: 'Successfully accepted terms and conditions',
       content: {
         'application/json': {
-          schema: UserResponseSchema,
+          schema: UserTosResponseSchema,
         },
       },
     },

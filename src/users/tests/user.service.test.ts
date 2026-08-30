@@ -67,7 +67,7 @@ describe('UserService', () => {
 
   describe('acceptTos', () => {
     it('should successfully update tosAccepted and tosAcceptedAt for the authenticated user', async () => {
-      const result = await service.acceptTos(testUserEmail1, testUserId1, 'user');
+      const result = await service.acceptTos(testUserEmail1, testUserId1);
 
       expect(result.email).toBe(testUserEmail1);
       expect(result.tosAccepted).toBe(true);
@@ -80,12 +80,12 @@ describe('UserService', () => {
     });
 
     it('should be idempotent when called multiple times', async () => {
-      const firstResult = await service.acceptTos(testUserEmail1, testUserId1, 'user');
+      const firstResult = await service.acceptTos(testUserEmail1, testUserId1);
       expect(firstResult.tosAccepted).toBe(true);
       const firstTimestamp = firstResult.tosAcceptedAt?.getTime();
 
       // Second call
-      const secondResult = await service.acceptTos(testUserEmail1, testUserId1, 'user');
+      const secondResult = await service.acceptTos(testUserEmail1, testUserId1);
       expect(secondResult.tosAccepted).toBe(true);
       expect(secondResult.tosAcceptedAt?.getTime()).toBe(firstTimestamp);
 
@@ -97,7 +97,7 @@ describe('UserService', () => {
 
     it('should throw 403 Forbidden when a user tries to accept TOS for another user', async () => {
       await expect(
-        service.acceptTos(testUserEmail1, testUserId2, 'user'),
+        service.acceptTos(testUserEmail1, testUserId2),
       ).rejects.toMatchObject({
         statusCode: 403,
         code: 'FORBIDDEN',
@@ -109,22 +109,23 @@ describe('UserService', () => {
       expect(inDb.tosAcceptedAt).toBeNull();
     });
 
-    it('should allow admin to accept TOS for any user', async () => {
-      const result = await service.acceptTos(testUserEmail2, adminUserId, 'admin');
+    it('should throw 403 Forbidden when an admin tries to accept TOS on behalf of another user', async () => {
+      await expect(
+        service.acceptTos(testUserEmail2, adminUserId),
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: 'FORBIDDEN',
+      });
 
-      expect(result.email).toBe(testUserEmail2);
-      expect(result.tosAccepted).toBe(true);
-      expect(result.tosAcceptedAt).toBeInstanceOf(Date);
-
-      // Verify in DB
+      // Verify target user in DB was NOT updated
       const [inDb] = await db.select().from(user).where(eq(user.id, testUserId2)).limit(1);
-      expect(inDb.tosAccepted).toBe(true);
-      expect(inDb.tosAcceptedAt).not.toBeNull();
+      expect(inDb.tosAccepted).toBe(false);
+      expect(inDb.tosAcceptedAt).toBeNull();
     });
 
     it('should throw 404 Not Found when email does not exist', async () => {
       await expect(
-        service.acceptTos('nonexistent@example.com', testUserId1, 'user'),
+        service.acceptTos('nonexistent@example.com', testUserId1),
       ).rejects.toMatchObject({
         statusCode: 404,
         code: 'NOT_FOUND',

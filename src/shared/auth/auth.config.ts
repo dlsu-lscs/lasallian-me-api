@@ -29,12 +29,12 @@ export const auth = betterAuth({
         },
         tosAccepted: {
           type: 'boolean',
-          input: true,
+          input: false,
           required: false,
         },
         tosAcceptedAt: {
           type: 'date',
-          input: true,
+          input: false,
           required: false,
         },
       },
