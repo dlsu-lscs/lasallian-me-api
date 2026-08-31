@@ -31,12 +31,14 @@ describe('ApplicationService', () => {
         name: 'Application Favorites User',
         email: 'application-favorites-user@example.com',
         emailVerified: true,
+        tosAccepted: true,
       },
       {
         id: otherUserId,
         name: 'Other Application User',
         email: 'other-application-user@example.com',
         emailVerified: true,
+        tosAccepted: true,
       },
     ]);
   });
@@ -283,6 +285,34 @@ describe('ApplicationService', () => {
         code: 'NOT_FOUND',
       });
     });
+
+    it('should throw 403 when user has not accepted TOS', async () => {
+      const noTosUserId = 'no-tos-user';
+      await db.insert(user).values({
+        id: noTosUserId,
+        name: 'No TOS User',
+        email: 'no-tos@example.com',
+        emailVerified: true,
+        tosAccepted: false,
+      });
+
+      const newApp = {
+        slug: 'tos-blocked-app',
+        title: 'TOS Blocked',
+        description: 'Should fail because TOS not accepted',
+        url: 'https://example.com/tos-blocked',
+        githubLink: 'https://github.com/test/test-app',
+        tags: [],
+      };
+
+      await expect(service.createApplication(newApp, noTosUserId)).rejects.toMatchObject({
+        statusCode: 403,
+        code: 'TOS_NOT_ACCEPTED',
+      });
+
+      // Cleanup
+      await db.delete(user).where(eq(user.id, noTosUserId));
+    });
   });
 
   describe('deleteApplicationById', () => {
@@ -456,8 +486,6 @@ describe('ApplicationService', () => {
 
       await service.patchApplicationById(app.id, { title: 'New Title' }, testUserId, "user");
 
-      // An author's edit sends the app back to PENDING, so it is no longer
-      // visible through the APPROVED-only public lookup.
       const result = await service.getOwnApplicationBySlug(app.slug, testUserId);
 
       expect(result.title).toBe('New Title');

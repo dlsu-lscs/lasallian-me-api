@@ -83,11 +83,11 @@ export interface IApplicationService {
   ): Promise<void>;
   getAdminClaimRequests(query: AdminClaimsListQuery): Promise<ClaimRequestsListResponse>;
   reviewAdminClaimRequest(claimId: number, input: ReviewClaimRequest): Promise<void>;
-  incrementViewCount(slug: string): Promise<void>; 
+  incrementViewCount(slug: string): Promise<void>;
 }
 
 export default class ApplicationService implements IApplicationService {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(private readonly db: NodePgDatabase) { }
 
   getPaginatedApplications = async (
     limit: number = APPLICATION_CONSTANTS.DEFAULT_LIMIT,
@@ -120,10 +120,10 @@ export default class ApplicationService implements IApplicationService {
     const statusCondition = filters?.status
       ? eq(application.status, filters.status)
       : or(
-          eq(application.status, 'PENDING'),
-          eq(application.status, 'CHANGES_REQUESTED'),
-          eq(application.status, 'REMOVED'),
-        )!;
+        eq(application.status, 'PENDING'),
+        eq(application.status, 'CHANGES_REQUESTED'),
+        eq(application.status, 'REMOVED'),
+      )!;
 
     return this.getFilteredApplications(limit, page, filters, statusCondition);
   };
@@ -318,8 +318,22 @@ export default class ApplicationService implements IApplicationService {
   };
 
   createApplication = async (app: CreateApplicationRequest, actorUserId: string): Promise<void> => {
-    if (!(await this.userExists(actorUserId))) {
+    const [existingUser] = await this.db
+      .select({ id: user.id, tosAccepted: user.tosAccepted })
+      .from(user)
+      .where(eq(user.id, actorUserId))
+      .limit(1);
+
+    if (!existingUser) {
       throw new HttpError(404, 'User not found', 'NOT_FOUND');
+    }
+
+    if (!existingUser.tosAccepted) {
+      throw new HttpError(
+        403,
+        'You must accept the Terms of Service before submitting an application',
+        'TOS_NOT_ACCEPTED',
+      );
     }
 
     if (await this.slugExists(app.slug)) {
@@ -744,13 +758,4 @@ export default class ApplicationService implements IApplicationService {
     return result.slug;
   };
 
-  private userExists = async (userId: string): Promise<boolean> => {
-    const [result] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
-
-    return !!result;
-  };
 }

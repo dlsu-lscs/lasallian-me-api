@@ -86,6 +86,8 @@ export default class MemberService implements IMemberService {
         banned: user.banned,
         banReason: user.banReason,
         banExpires: user.banExpires,
+        tosAccepted: user.tosAccepted,
+        tosAcceptedAt: user.tosAcceptedAt,
         createdAt: user.createdAt,
         favoritesCount: sql<number>`count(distinct ${userFavorite.applicationId})::int`,
         reviewsCount:   sql<number>`count(distinct ${rating.applicationId})::int`,
